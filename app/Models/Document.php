@@ -65,10 +65,10 @@ class Document extends Model
     //      return $this->hasMany(DocumentRata::class, 'document_id');
     // }
 
-    // public function dettagli()
-    // {
-    //     return $this->hasOne(DocumentDettagli::class, 'document_id');
-    // }
+    public function dettagli()
+    {
+        return $this->hasOne(DocumentDettagli::class, 'document_id');
+    }
 
 	public function media()
     {

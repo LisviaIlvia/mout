@@ -277,13 +277,13 @@ export default {
 					
 					// Gestisci sconto se presente, altrimenti usa 0
 					let sconto = 0;
-					if (elemento.tipo_sconto && elemento.sconto) {
-						if (elemento.tipo_sconto === '%') {
-							sconto = subtotale * (parseFloat(elemento.sconto) / 100);
-						} else {
-							sconto = parseFloat(elemento.sconto) || 0;
-						}
-					}
+					// if (elemento.tipo_sconto && elemento.sconto) {
+					// 	if (elemento.tipo_sconto === '%') {
+					// 		sconto = subtotale * (parseFloat(elemento.sconto) / 100);
+					// 	} else {
+					// 		sconto = parseFloat(elemento.sconto) || 0;
+					// 	}
+					// }
 
 					const imponibile = subtotale - sconto;
 					const aliquota = elemento.iva.aliquota;
@@ -304,7 +304,8 @@ export default {
 				}
 				
 				const subtotale = parseFloat(this.spedizione.prezzo);
-				const sconto = subtotale * (parseFloat(this.spedizione.sconto) / 100);
+				// const sconto = subtotale * (parseFloat(this.spedizione.sconto) / 100);
+				const sconto = 0;
 				const imponibile = subtotale - sconto;
 				const aliquota = this.spedizione.iva.aliquota;
 				const iva = imponibile * (parseFloat(this.spedizione.iva.aliquota) / 100);

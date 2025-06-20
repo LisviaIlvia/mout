@@ -174,6 +174,10 @@ export default {
 		readonly: {
 			type: Boolean,
 			default: false
+		},
+		initialData: {
+			type: Object,
+			default: () => ({})
 		}
 	},
 	inject: ['crud'],
@@ -186,29 +190,43 @@ export default {
 	},
 	methods: {
 		initialState() {
+			// Usa i dati iniziali dal backend se disponibili, altrimenti usa i valori di default
+			const defaultForm = {
+				mod_poltrona: null,
+				quantita: null,
+				fianchi_finali: null,
+				interasse_cm: null,
+				largh_bracciolo_cm: null,
+				rivestimento: null,
+				ricamo_logo: false,
+				pendenza: false,
+				fissaggio_pavimento: false,
+				montaggio: false,
+				data_evasione: null
+			};
+
 			return {
 				form: {
-                    mod_poltrona: null,
-                    quantita: null,
-                    fianchi_finali: null,
-                    interasse_cm: null,
-                    largh_bracciolo_cm: null,
-                    rivestimento: null,
-                    ricamo_logo: false,
-                    pendenza: false,
-                    fissaggio_pavimento: false,
-                    montaggio: false,
-                    data_evasione: null
+					...defaultForm,
+					...this.initialData
 				}
 			}
 		},
         formatDate() {
 			let data_evasione = null;
-			if(this.form.data_evasione !== null) {
-				const day = `0${this.form.data_evasione.getDate()}`.slice(-2);
-				const month = `0${this.form.data_evasione.getMonth() + 1}`.slice(-2);
-				const year = this.form.data_evasione.getFullYear();
-				data_evasione = `${year}-${month}-${day}`;
+			if(this.form.data_evasione !== null && this.form.data_evasione !== undefined) {
+				// Converti in oggetto Date se è una stringa
+				const dateObj = this.form.data_evasione instanceof Date 
+					? this.form.data_evasione 
+					: new Date(this.form.data_evasione);
+				
+				// Verifica che la data sia valida
+				if (!isNaN(dateObj.getTime())) {
+					const day = `0${dateObj.getDate()}`.slice(-2);
+					const month = `0${dateObj.getMonth() + 1}`.slice(-2);
+					const year = dateObj.getFullYear();
+					data_evasione = `${year}-${month}-${day}`;
+				}
 			}
 			return data_evasione;
 		},
@@ -227,8 +245,47 @@ export default {
                 dettagli: { ...this.form }
             };
             form_data.dettagli.data_evasione = data_evasione;
+            
+            // Converti i campi booleani in valori boolean
+            form_data.dettagli.ricamo_logo = Boolean(this.form.ricamo_logo);
+            form_data.dettagli.pendenza = Boolean(this.form.pendenza);
+            form_data.dettagli.fissaggio_pavimento = Boolean(this.form.fissaggio_pavimento);
+            form_data.dettagli.montaggio = Boolean(this.form.montaggio);
+            
             return form_data;
         }
+	},
+	watch: {
+		initialData: {
+			handler(newVal) {
+				if (newVal && Object.keys(newVal).length > 0) {
+					// Converti i valori stringa in numeri per i campi numerici
+					const processedData = { ...newVal };
+					
+					// Campi numerici che potrebbero arrivare come stringhe
+					const numericFields = ['quantita', 'fianchi_finali', 'interasse_cm', 'largh_bracciolo_cm'];
+					numericFields.forEach(field => {
+						if (processedData[field] !== null && processedData[field] !== undefined) {
+							const numValue = parseFloat(processedData[field]);
+							processedData[field] = isNaN(numValue) ? null : numValue;
+						}
+					});
+					
+					// Converti data_evasione da stringa a oggetto Date
+					if (processedData.data_evasione && typeof processedData.data_evasione === 'string') {
+						processedData.data_evasione = new Date(processedData.data_evasione);
+					}
+					
+					// Aggiorna il form con i nuovi dati
+					this.form = {
+						...this.form,
+						...processedData
+					};
+				}
+			},
+			immediate: true,
+			deep: true
+		}
 	}
 }
 </script>

@@ -65,9 +65,9 @@ export default {
 			const { extraData = null, callbackError = null } = setup;
 			this.$refs.dialogShowRef.openDialogShow(urlOpen, (data) => {
 				this.data.elements = data;
-				this.data.typesRelation = data.types_relation;
-				this.data.magicUrl = data.resource.magic_url;
-				this.data.pdfUrl = data.resource.pdf_url.pdf;
+				this.data.typesRelation = data.types_relation || [];
+				this.data.magicUrl = data.resource?.magic_url || null;
+				this.data.pdfUrl = data.resource?.pdf_url?.pdf || null;
 				},
 				{ extraData, callbackError }
 			);

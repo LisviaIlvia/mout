@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Helpers\FunctionsHelper;
 use App\Models\Document;
@@ -67,7 +68,15 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 	protected function getCollectionIndex()
 	{
-		return $this->model::getDocuments($this->pattern)->get();
+		$query = $this->model::getDocuments($this->pattern);
+		
+		// Se activeYear è true, filtra per anno
+		if ($this->activeYear) {
+			$year = request()->query('year', date('Y'));
+			$query->whereYear('data', $year);
+		}
+		
+		return $query->get();
 	}
 
 	protected function setComponents()
@@ -84,6 +93,31 @@ abstract class AbstractDocumentController extends AbstractCrudController
 	protected function beforeStore(&$validatedData)
 	{
 		$validatedData['type'] =  $this->pattern;
+
+		// Preprocess boolean fields in dettagli if they exist
+		if ($this->dettagli_active && isset($validatedData['dettagli'])) {
+			$booleanFields = ['ricamo_logo', 'pendenza', 'fissaggio_pavimento', 'montaggio'];
+			foreach ($booleanFields as $field) {
+				if (isset($validatedData['dettagli'][$field])) {
+					$value = $validatedData['dettagli'][$field];
+					
+					// Convert various boolean representations to actual boolean
+					if (is_string($value)) {
+						$validatedData['dettagli'][$field] = in_array(strtolower($value), ['true', '1', 'yes', 'on']);
+					} elseif (is_numeric($value)) {
+						$validatedData['dettagli'][$field] = (bool) $value;
+					} elseif (is_bool($value)) {
+						$validatedData['dettagli'][$field] = $value;
+					} else {
+						// If it's not a valid boolean representation, set to false
+						$validatedData['dettagli'][$field] = false;
+					}
+				} else {
+					// Set default value if not provided
+					$validatedData['dettagli'][$field] = false;
+				}
+			}
+		}
 
 		// if(isset($validatedData['metodo_pagamento_id'])) {
 		// 	if($validatedData['metodo_pagamento_id'] == '0' || $validatedData['metodo_pagamento_id'] == null) unset($validatedData['metodo_pagamento_id']);
@@ -142,8 +176,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							'type' =>  $element['tipo'],
 							'quantita' => $element['quantita'],
 							'prezzo' => $element['prezzo'],
-							// 'tipo_sconto' => $element['tipo_sconto'],
-							// 'sconto' => $element['sconto'],
 							'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 							'order' => $key
 						]);
@@ -155,8 +187,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							'quantita' => $element['quantita'],
 							'unita_misura' => request()->elementi[$key]['unita_misura'],
 							'prezzo' => $element['prezzo'],
-							// 'sconto' => $element['sconto'],
-							// 'tipo_sconto' => $element['tipo_sconto'],
 							'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 							'order' => $key
 						]);
@@ -202,31 +232,56 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		// 	}
 		// }
 
-        // if($this->dettagli_active === true) {
-        //     if (isset($validatedData['dettagli']) && !empty($validatedData['dettagli'])) {
-        //         $dettaglio = $validatedData['dettagli'];
-        //         DocumentDettagli::create([
-        //             'document_id' => $object->id,
-        //             'data_evasione' => $dettaglio['data_evasione'] ?? null,
-        //             'mod_poltrona' => $dettaglio['mod_poltrona'] ?? null,
-        //             'quantita' => $dettaglio['quantita'] ?? null,
-        //             'fianchi_finali' => $dettaglio['fianchi_finali'] ?? null,
-        //             'interasse_cm' => $dettaglio['interasse_cm'] ?? null,
-        //             'largh_bracciolo_cm' => $dettaglio['largh_bracciolo_cm'] ?? null,
-        //             'rivestimento' => $dettaglio['rivestimento'] ?? null,
-        //             'ricamo_logo' => filter_var($dettaglio['ricamo_logo'], FILTER_VALIDATE_BOOLEAN) ?? false,
-        //             'pendenza' => filter_var($dettaglio['pendenza'], FILTER_VALIDATE_BOOLEAN) ?? false,
-        //             'fissaggio_pavimento' => filter_var($dettaglio['fissaggio_pavimento'], FILTER_VALIDATE_BOOLEAN) ?? false,
-        //             'montaggio' => filter_var($dettaglio['montaggio'], FILTER_VALIDATE_BOOLEAN) ?? false
-        //         ]);
-        //     }
-        // }
+        if($this->dettagli_active === true) {
+            if (isset($validatedData['dettagli']) && !empty($validatedData['dettagli'])) {
+                $dettaglio = $validatedData['dettagli'];
+                DocumentDettagli::create([
+                    'document_id' => $object->id,
+                    'data_evasione' => $dettaglio['data_evasione'] ?? null,
+                    'mod_poltrona' => $dettaglio['mod_poltrona'] ?? null,
+                    'quantita' => $dettaglio['quantita'] ?? null,
+                    'fianchi_finali' => $dettaglio['fianchi_finali'] ?? null,
+                    'interasse_cm' => $dettaglio['interasse_cm'] ?? null,
+                    'largh_bracciolo_cm' => $dettaglio['largh_bracciolo_cm'] ?? null,
+                    'rivestimento' => $dettaglio['rivestimento'] ?? null,
+                    'ricamo_logo' => filter_var($dettaglio['ricamo_logo'], FILTER_VALIDATE_BOOLEAN) ?? false,
+                    'pendenza' => filter_var($dettaglio['pendenza'], FILTER_VALIDATE_BOOLEAN) ?? false,
+                    'fissaggio_pavimento' => filter_var($dettaglio['fissaggio_pavimento'], FILTER_VALIDATE_BOOLEAN) ?? false,
+                    'montaggio' => filter_var($dettaglio['montaggio'], FILTER_VALIDATE_BOOLEAN) ?? false
+                ]);
+            }
+        }
 
 	}
 
 	protected function beforeUpdate(&$validatedData)
 	{
 		$validatedData['type'] =  $this->pattern;
+
+		// Preprocess boolean fields in dettagli if they exist
+		if ($this->dettagli_active && isset($validatedData['dettagli'])) {
+			$booleanFields = ['ricamo_logo', 'pendenza', 'fissaggio_pavimento', 'montaggio'];
+			foreach ($booleanFields as $field) {
+				if (isset($validatedData['dettagli'][$field])) {
+					$value = $validatedData['dettagli'][$field];
+					
+					// Convert various boolean representations to actual boolean
+					if (is_string($value)) {
+						$validatedData['dettagli'][$field] = in_array(strtolower($value), ['true', '1', 'yes', 'on']);
+					} elseif (is_numeric($value)) {
+						$validatedData['dettagli'][$field] = (bool) $value;
+					} elseif (is_bool($value)) {
+						$validatedData['dettagli'][$field] = $value;
+					} else {
+						// If it's not a valid boolean representation, set to false
+						$validatedData['dettagli'][$field] = false;
+					}
+				} else {
+					// Set default value if not provided
+					$validatedData['dettagli'][$field] = false;
+				}
+			}
+		}
 
 		// if(isset($validatedData['metodo_pagamento_id'])) {
 		// 	if($validatedData['metodo_pagamento_id'] == '0' || $validatedData['metodo_pagamento_id'] == null) unset($validatedData['metodo_pagamento_id']);
@@ -290,8 +345,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 								'type' =>  $element['tipo'],
 								'quantita' => $element['quantita'],
 								'prezzo' => $element['prezzo'],
-								'tipo_sconto' => '%',
-								'sconto' => 0,
 								'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 								'order' => $key
 							]);
@@ -303,8 +356,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 								'quantita' => $element['quantita'],
 								'unita_misura' => request()->elementi[$key]['unita_misura'],
 								'prezzo' => $element['prezzo'],
-								'tipo_sconto' => '%',
-								'sconto' => 0,
 								'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 								'order' => $key
 							]);
@@ -318,6 +369,27 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							break;
 					}
 				}
+			}
+		}
+
+		if($this->dettagli_active === true) {
+			if (isset($validatedData['dettagli']) && !empty($validatedData['dettagli'])) {
+				$object->dettagli()->delete();
+				$dettaglio = $validatedData['dettagli'];
+				DocumentDettagli::create([
+					'document_id' => $object->id,
+					'data_evasione' => $dettaglio['data_evasione'] ?? null,
+					'mod_poltrona' => $dettaglio['mod_poltrona'] ?? null,
+					'quantita' => $dettaglio['quantita'] ?? null,
+					'fianchi_finali' => $dettaglio['fianchi_finali'] ?? null,
+					'interasse_cm' => $dettaglio['interasse_cm'] ?? null,
+					'largh_bracciolo_cm' => $dettaglio['largh_bracciolo_cm'] ?? null,
+					'rivestimento' => $dettaglio['rivestimento'] ?? null,
+					'ricamo_logo' => filter_var($dettaglio['ricamo_logo'], FILTER_VALIDATE_BOOLEAN) ?? false,
+					'pendenza' => filter_var($dettaglio['pendenza'], FILTER_VALIDATE_BOOLEAN) ?? false,
+					'fissaggio_pavimento' => filter_var($dettaglio['fissaggio_pavimento'], FILTER_VALIDATE_BOOLEAN) ?? false,
+					'montaggio' => filter_var($dettaglio['montaggio'], FILTER_VALIDATE_BOOLEAN) ?? false
+				]);
 			}
 		}
 	}
@@ -345,6 +417,9 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				})
 			];
 		} else {
+			// Carica esplicitamente le relazioni necessarie
+			$object->load(['entity', 'indirizzo', 'dettagli', 'products.product.aliquotaIva', 'products.product.categories.parent', 'altro.aliquotaIva', 'descrizioni', 'media']);
+			
 			$data['main'] = [
 				'id' => $object->id,
 				'numero' => $object->numero,
@@ -352,8 +427,10 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'stato' => $object->stato,
 				'note' => $object->note,
 				'entity_id' => $object->entity_id,
+				'entity_type' => $object->entity ? $object->entity->type : null,
 				'entity' => $object->entity,
 				'indirizzo' => $object->indirizzo,
+				'dettagli' => $object->dettagli ? $this->getDettagli($object->dettagli) : null,
 				'elementi' => $this->getElementi($object),
 				'allegati' => $object->media->map(function ($media) {
 					return [
@@ -374,13 +451,37 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 		// Aggiungi prodotti
 		foreach ($document->products as $product) {
+			// Determina il tipo in base al prodotto se il campo type è null
+			$tipo = $product->type;
+			if ($tipo === null && $product->product) {
+				// Determina il tipo in base alla categoria del prodotto
+				if ($product->product->categories && $product->product->categories->count() > 0) {
+					$categoria = $product->product->categories->first();
+					if ($categoria->parent_id === null) {
+						// Categoria principale
+						$tipo = strtolower($categoria->nome);
+					} else {
+						// Sottocategoria, cerca la categoria padre
+						$categoriaPadre = $categoria->parent;
+						if ($categoriaPadre) {
+							$tipo = strtolower($categoriaPadre->nome);
+						}
+					}
+				}
+			}
+			
+			// Mappa i tipi delle categorie ai tipi accettati dalla validazione
+			$tipoMappato = $this->mapTipoToValidType($tipo);
+			
 			$elementi->push([
 				'id' => $product->id,
-				'tipo' => $product->type,
+				'tipo' => $tipoMappato,
 				'product_id' => $product->product_id,
 				'nome' => $product->product->nome,
 				'quantita' => $product->quantita,
 				'prezzo' => $product->prezzo,
+				'unita_misura' => $product->product->unita_misura ?? 'NR',
+				'importo' => $product->quantita * $product->prezzo,
 				'iva' => [
 					'aliquota_iva_id' => $product->aliquota_iva_id,
 					'aliquota' => $product->aliquotaIva->aliquota
@@ -397,6 +498,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'quantita' => $altro->quantita,
 				'unita_misura' => $altro->unita_misura,
 				'prezzo' => $altro->prezzo,
+				'importo' => $altro->quantita * $altro->prezzo,
 				'iva' => [
 					'aliquota_iva_id' => $altro->aliquota_iva_id,
 					'aliquota' => $altro->aliquotaIva->aliquota
@@ -416,6 +518,37 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		return $elementi->sortBy('order')->values();
 	}
 
+	/**
+	 * Mappa i tipi delle categorie ai tipi accettati dalla validazione
+	 */
+	private function mapTipoToValidType($tipo)
+	{
+		// Mappa dei tipi delle categorie ai tipi validi
+		$mapping = [
+			'ferramenta' => 'merci',
+			'ferramenta' => 'merci',
+			'accessori' => 'merci',
+			'componenti' => 'merci',
+			'ricambi' => 'merci',
+			'materiali' => 'merci',
+			'prodotti' => 'merci',
+			'articoli' => 'merci',
+			'servizi' => 'servizi',
+			'assistenza' => 'servizi',
+			'manutenzione' => 'servizi',
+			'installazione' => 'servizi',
+			'consulenza' => 'servizi',
+		];
+		
+		// Se il tipo è già valido, restituiscilo
+		if (in_array($tipo, ['merci', 'servizi', 'altro', 'descrizione'])) {
+			return $tipo;
+		}
+		
+		// Altrimenti, cerca nella mappa o usa 'merci' come fallback
+		return $mapping[$tipo] ?? 'merci';
+	}
+
 	protected function setOtherData(string $type, Model $object)
 	{
 		$data['aliquote_iva'] = AliquotaIva::all();
@@ -432,11 +565,11 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		$data['ricorrenze'] = collect([]);
 		
 		$data['entrata'] = $this->entrata;
-		$data['spedizione_active'] = false;
-		$data['trasporto_active'] = false;
-		$data['dettagli_active'] = false;
-		$data['metodo_pagamento_active'] = false;
-		$data['rate_active'] = false;
+		$data['spedizione_active'] = $this->spedizione_active;
+		$data['trasporto_active'] = $this->trasporto_active;
+		$data['dettagli_active'] = $this->dettagli_active;
+		$data['metodo_pagamento_active'] = $this->metodo_pagamento_active;
+		$data['rate_active'] = $this->rate_active;
 		$data['stati'] = $this->stati;
 		$data['types_relation'] = $this->types_relation;
 
@@ -448,6 +581,23 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'interlocutore' => $this->entrata ? 'Fornitore' : 'Cliente',
 				'intestatari' => $this->getIntestatari()
 			];
+			
+			// Aggiungi dettagli di default se attivi
+			if ($this->dettagli_active) {
+				$data['dettagli'] = [
+					'data_evasione' => null,
+					'mod_poltrona' => null,
+					'quantita' => null,
+					'fianchi_finali' => null,
+					'interasse_cm' => null,
+					'largh_bracciolo_cm' => null,
+					'rivestimento' => null,
+					'ricamo_logo' => false,
+					'pendenza' => false,
+					'fissaggio_pavimento' => false,
+					'montaggio' => false
+				];
+			}
 		}
 
 		return $data;
@@ -455,23 +605,41 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 	protected function setValidation(Model $object)
 	{
+		$rules = [
+			'stato' => 'nullable',
+			'data' => 'required',
+			'allegati' => 'nullable|array',
+			'note' => 'nullable|string',
+			'entity_id' => 'required|integer',
+			'indirizzo' => 'array|required',
+			'elementi' => 'array|required',
+			'elementi.*.descrizione' => 'required_unless:elementi.*.tipo,altro,merci,servizi|string',
+			'elementi.*.quantita' => 'required_unless:elementi.*.tipo,descrizione|numeric|min:1',
+			'elementi.*.iva' => 'required_unless:elementi.*.tipo,descrizione',
+			'elementi.*.tipo' => 'required|in:descrizione,altro,merci,servizi',
+			'elementi.*.prezzo' => 'required_unless:elementi.*.tipo,descrizione|numeric',
+			'elementi.*.id' => 'required_unless:elementi.*.tipo,altro,descrizione|integer', // ID del prodotto per merci/servizi
+			'elementi.*.nome' => 'required_unless:elementi.*.tipo,merci,servizi,descrizione|string', // Nome solo per "altro"
+		];
+
+		// Aggiungi regole per i dettagli se attivi
+		if ($this->dettagli_active) {
+			$rules['dettagli'] = 'nullable|array';
+			$rules['dettagli.data_evasione'] = 'nullable|date';
+			$rules['dettagli.mod_poltrona'] = 'nullable|string|max:255';
+			$rules['dettagli.quantita'] = 'nullable|integer|min:0';
+			$rules['dettagli.fianchi_finali'] = 'nullable|integer|min:0';
+			$rules['dettagli.interasse_cm'] = 'nullable|numeric|min:0';
+			$rules['dettagli.largh_bracciolo_cm'] = 'nullable|numeric|min:0';
+			$rules['dettagli.rivestimento'] = 'nullable|string|max:255';
+			$rules['dettagli.ricamo_logo'] = 'nullable|in:true,false,1,0,"true","false","1","0"';
+			$rules['dettagli.pendenza'] = 'nullable|in:true,false,1,0,"true","false","1","0"';
+			$rules['dettagli.fissaggio_pavimento'] = 'nullable|in:true,false,1,0,"true","false","1","0"';
+			$rules['dettagli.montaggio'] = 'nullable|in:true,false,1,0,"true","false","1","0"';
+		}
+
 		return [
-			'rules' => [
-				'stato' => 'nullable',
-				'data' => 'required',
-				'allegati' => 'nullable|array',
-				'note' => 'nullable|string',
-				'entity_id' => 'required|integer',
-				'indirizzo' => 'array|required',
-				'elementi' => 'array|required',
-				'elementi.*.descrizione' => 'required_unless:elementi.*.tipo,altro,merci,servizi|string',
-				'elementi.*.quantita' => 'required_unless:elementi.*.tipo,descrizione|numeric|min:1',
-				'elementi.*.iva' => 'required_unless:elementi.*.tipo,descrizione',
-				'elementi.*.tipo' => 'required|in:descrizione,altro,merci,servizi',
-				'elementi.*.prezzo' => 'required_unless:elementi.*.tipo,descrizione|numeric',
-				'elementi.*.id' => 'required_unless:elementi.*.tipo,altro,descrizione|integer', // ID del prodotto per merci/servizi
-				'elementi.*.nome' => 'required_unless:elementi.*.tipo,merci,servizi,descrizione|string', // Nome solo per "altro"
-			],
+			'rules' => $rules,
 			'store' => [
 				'numero' => [
 					'required',
@@ -503,7 +671,16 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'elementi.*.tipo.required' => 'Il tipo degli elementi è obbligatorio.',
 				'elementi.*.prezzo.required_unless' => 'Il prezzo degli elementi è obbligatorio.',
 				'elementi.*.id.required_unless' => 'Il prodotto è obbligatorio per merci e servizi.',
-				'elementi.*.nome.required_unless' => 'Il nome è obbligatorio per elementi personalizzati.'
+				'elementi.*.nome.required_unless' => 'Il nome è obbligatorio per elementi personalizzati.',
+				'dettagli.data_evasione.date' => 'La data di evasione deve essere una data valida.',
+				'dettagli.quantita.integer' => 'La quantità deve essere un numero intero.',
+				'dettagli.quantita.min' => 'La quantità non può essere negativa.',
+				'dettagli.fianchi_finali.integer' => 'I fianchi finali devono essere un numero intero.',
+				'dettagli.fianchi_finali.min' => 'I fianchi finali non possono essere negativi.',
+				'dettagli.interasse_cm.numeric' => 'L\'interasse deve essere un numero.',
+				'dettagli.interasse_cm.min' => 'L\'interasse non può essere negativo.',
+				'dettagli.largh_bracciolo_cm.numeric' => 'La larghezza del bracciolo deve essere un numero.',
+				'dettagli.largh_bracciolo_cm.min' => 'La larghezza del bracciolo non può essere negativa.'
 			]
 		];
 	}
@@ -529,14 +706,36 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		$data = $typeMap[$type] ?? [];
 
 		if ($object->exists && in_array($type, ['store', 'update', 'clone'])) {
-			$data['actions'] = $this->getAction($object, [
+			$actionPermissions = [
 				'show' => 'show',
 				'edit' => 'edit',
 				'update' => 'edit',
-				'destroy' => 'delete',
-				'clone' => 'clone',
-				'pdf' => 'pdf'
-			]);
+				'destroy' => 'delete'
+			];
+			
+			// Aggiungi azioni solo se abilitate
+			if ($this->clone) {
+				$actionPermissions['clone'] = 'clone';
+			}
+			if ($this->pdf) {
+				$actionPermissions['pdf'] = 'pdf';
+			}
+			if ($this->magic) {
+				$actionPermissions['magic'] = 'magic';
+			}
+			
+			$data['actions'] = $this->getAction($object, $actionPermissions);
+		}
+
+		// Per i tipi show e edit, struttura i dati come si aspetta il frontend
+		if (in_array($type, ['show', 'edit']) && $object->exists) {
+			return [
+				'document' => $main,
+				'stato' => $object->stato,
+				'relation' => $this->getRelation($object),
+				'interlocutore' => $this->entrata ? 'Fornitore' : 'Cliente',
+				'numero' => $object->numero
+			];
 		}
 
         return array_merge((array) $main, (array) $data);
@@ -556,6 +755,10 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 		if ($object->indirizzo) {
             $newDocument->indirizzo()->create($object->indirizzo->toArray());
+        }
+
+		if ($object->dettagli) {
+            $newDocument->dettagli()->create($object->dettagli->toArray());
         }
 
 		foreach ($object->products as $product) {
@@ -662,8 +865,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 						'type' => 'merci',
 						'quantita' => $element['quantita'],
 						'prezzo' => $element['prezzo'],
-						'tipo_sconto' => '%',
-						'sconto' => 0,
 						'aliquota_iva_id' => $element['aliquota_iva_id'] ?? 1,
 						'order' => 0
 					]);
@@ -674,8 +875,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 						'quantita' => $element['quantita'],
 						'unita_misura' => $element['unita_misura'] ?? 'NR',
 						'prezzo' => $element['prezzo'],
-						'tipo_sconto' => '%',
-						'sconto' => 0,
 						'aliquota_iva_id' => $element['aliquota_iva_id'] ?? 1,
 						'order' => 0
 					]);
@@ -800,12 +999,17 @@ abstract class AbstractDocumentController extends AbstractCrudController
 	{
 		return [
 			'id' => $document_dettagli->id,
-			'luogo_destinazione' => $document_dettagli->luogo_destinazione,
-			'data_destinazione' => $document_dettagli->data_destinazione,
-			'ora_destinazione' => $document_dettagli->ora_destinazione,
-			'luogo_consegna' => $document_dettagli->luogo_consegna,
-			'data_consegna' => $document_dettagli->data_consegna,
-			'ora_consegna' => $document_dettagli->ora_consegna
+			'data_evasione' => $document_dettagli->data_evasione,
+			'mod_poltrona' => $document_dettagli->mod_poltrona,
+			'quantita' => $document_dettagli->quantita,
+			'fianchi_finali' => $document_dettagli->fianchi_finali,
+			'interasse_cm' => $document_dettagli->interasse_cm,
+			'largh_bracciolo_cm' => $document_dettagli->largh_bracciolo_cm,
+			'rivestimento' => $document_dettagli->rivestimento,
+			'ricamo_logo' => $document_dettagli->ricamo_logo,
+			'pendenza' => $document_dettagli->pendenza,
+			'fissaggio_pavimento' => $document_dettagli->fissaggio_pavimento,
+			'montaggio' => $document_dettagli->montaggio
 		];
 	}
 
@@ -842,5 +1046,34 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			'parents' => $parents,
 			'children' => $children
 		];
+	}
+
+	/**
+	 * Elimina una risorsa dal database.
+	 *
+	 * @param int $id  ID della risorsa da eliminare
+	 * @return \Illuminate\Http\JsonResponse
+	**/
+	public function destroy($id)
+	{
+		return DB::transaction(function () use ($id) {
+			$object = $this->resolveModel($id);
+			$data = $this->getJsonData('destroy', $object);
+
+			// Cancella manualmente le relazioni prima di cancellare il documento
+			$object->products()->delete();
+			$object->altro()->delete();
+			$object->descrizioni()->delete();
+			$object->indirizzo()->delete();
+			if ($this->dettagli_active) {
+				$object->dettagli()->delete();
+			}
+			$object->media()->delete();
+			
+			// Cancella il documento principale
+			$object->delete();
+
+			return response()->json(['record' => $data]);
+		});
 	}
 }

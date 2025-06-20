@@ -16,9 +16,10 @@ class OrdineVenditaController extends AbstractDocumentController
 	protected bool $spedizione_active = false;
 	protected bool $metodo_pagamento_active = false;
 	protected bool $rate_active = false;
-    protected bool $dettagli_active = fasle;
+    protected bool $dettagli_active = true;
+	protected bool $activeYear = false;
 	protected bool $export = true;
-	protected bool $pdf = true;
+	protected bool $pdf = false;
 	protected bool $clone = true;
 	protected bool $magic = true;
 

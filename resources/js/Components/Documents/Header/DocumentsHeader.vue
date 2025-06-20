@@ -222,8 +222,8 @@
 				ref="indirizzoDocumentsRef"
 			/>
 		</v-col>
-        <!-- <v-col
-            v-if="this.dettagliActive"
+        <v-col
+            v-if="dettagliActive"
             class="py-0 mt-6"
             cols="12"
         >
@@ -231,10 +231,11 @@
                 :color="color"
                 :readonly="readonly"
                 :errors="errors"
+                :initialData="data.dettagli || {}"
                 @ready="handleReadyDettagli"
                 ref="dettagliDocumentsRef"
             />
-        </v-col> -->
+        </v-col>
 	</v-row>
 </template>
 
@@ -259,14 +260,14 @@
 import { useYearStore } from '@/store/yearStore';
 import DocumentsIndirizzo from '@/Components/Documents/Header/DocumentsIndirizzo.vue';
 import DocumentsLuogoDestinazione from '@/Components/Documents/Header/DocumentsLuogoDestinazione.vue';
-// import DocumentsDettagli from '@/Components/Documents/Header/DocumentsDettagli.vue';
+import DocumentsDettagli from '@/Components/Documents/Header/DocumentsDettagli.vue';
 
 export default {
 	name: 'DocumentsHeader',
 	components: {
 		DocumentsIndirizzo,
 		DocumentsLuogoDestinazione,
-        // DocumentsDettagli
+        DocumentsDettagli
 	},
 	props: {
 		tipiIntestatari: {
@@ -312,6 +313,10 @@ export default {
 		readonly: {
 			type: Boolean,
 			default: false
+		},
+		dettagliActive: {
+			type: Boolean,
+			default: false
 		}
 	},
 	emits: ['ready'],
@@ -345,7 +350,6 @@ export default {
 			return {
 				numeroBlock: true,
 				// trasportoActive: false,
-                // dettagliActive: false,
 				form: {
 					numero: '',
 					stato: null,
@@ -358,7 +362,7 @@ export default {
 					stati: [],
 					parents: null,
 					children: null,
-                    // dettagli: null
+					dettagli: null
 				}
 			};
 		},
@@ -394,6 +398,12 @@ export default {
             const data = this.formatDate();
             let form_data = { ...this.form, ...this.$refs.indirizzoDocumentsRef.getForm() };
             form_data.data = data;
+            
+            // Aggiungi i dettagli se attivi
+            if (this.dettagliActive && this.$refs.dettagliDocumentsRef) {
+                form_data = { ...form_data, ...this.$refs.dettagliDocumentsRef.getForm() };
+            }
+            
 			return form_data;
 		},
 		handleReadyIndirizzo() {
@@ -401,10 +411,10 @@ export default {
 			this.$refs.indirizzoDocumentsRef.form.indirizzo = this.data.indirizzo;
 			this.$refs.indirizzoDocumentsRef.trasportoActive = this.trasportoActive;
 		},
-		// handleReadyDettagli() {
-		// 	this.$emit('ready');
-		// 	this.$refs.dettagliDocumentsRef.form = this.data.dettagli;
-		// }
+		handleReadyDettagli() {
+			this.$emit('ready');
+			// I dati vengono passati tramite la prop initialData
+		}
 	},
 	watch: {
 		numero(newVal) {

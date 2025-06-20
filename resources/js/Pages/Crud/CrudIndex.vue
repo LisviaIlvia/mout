@@ -368,7 +368,15 @@ export default {
 			this.flashMessage(notification);
 		},
 		applyYearFilter() {
-			if(!this.setup.activeYear || !this.setup.yearStore.selectedYear) {
+			// Se activeYear è false, non applicare alcun filtro per anno
+			if(!this.setup.activeYear) {
+				// Ripristina tutti i record originali
+				this.crudTable.records = [...this.crudTable.originalRecords];
+				return;
+			}
+
+			// Se non c'è un anno selezionato, non applicare alcun filtro
+			if(!this.setup.yearStore.selectedYear) {
 				return;
 			}
 
@@ -380,7 +388,23 @@ export default {
 				this.crudTable.records = filteredRecord ? filteredRecord.records : [];
 			} else {
 				this.crudTable.records = this.crudTable.originalRecords.filter((record) => {
-					const recordYear = parseInt(record.data.split('/')[2], 10);
+					// Gestisci sia il formato YYYY-MM-DD che dd/mm/yyyy
+					let recordYear;
+					if (record.data && typeof record.data === 'string') {
+						if (record.data.includes('-')) {
+							// Formato YYYY-MM-DD
+							recordYear = parseInt(record.data.split('-')[0], 10);
+						} else if (record.data.includes('/')) {
+							// Formato dd/mm/yyyy
+							recordYear = parseInt(record.data.split('/')[2], 10);
+						} else {
+							// Se non riesce a parsare, usa l'anno corrente
+							recordYear = new Date().getFullYear();
+						}
+					} else {
+						// Se non c'è data, usa l'anno corrente
+						recordYear = new Date().getFullYear();
+					}
 					return recordYear === year;
 				});
 			}

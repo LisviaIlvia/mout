@@ -50,7 +50,7 @@
 						:disabled="form.spedizione.spedizione_id === 0"
 					/>
 				</v-col>
-				<v-col
+				<!-- <v-col
 					cols="3"
 					class="py-0 mb-2"
 				>
@@ -64,7 +64,7 @@
 						:readonly="readonly"
 						:disabled="form.spedizione.spedizione_id === 0"
 					/>
-				</v-col>
+				</v-col> -->
 				<v-col
 					cols="3"
 					class="py-0 mb-2"
@@ -145,7 +145,7 @@ export default {
 			if( this.form.spedizione.spedizione_id === 0 ) {
 				this.form.spedizione = {
 					prezzo: 0,
-					sconto: 0,
+					// sconto: 0,
 					iva: {
 						aliquota_iva_id: null,
 						aliquota: ''

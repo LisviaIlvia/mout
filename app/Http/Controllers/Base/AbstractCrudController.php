@@ -22,6 +22,7 @@ abstract class AbstractCrudController extends Controller
 	protected bool $createData = false;
 	protected bool $pdf = false;
 	protected bool $clone = false;
+	protected bool $magic = false;
 	protected bool $activeYear = false;
 	protected bool $recordsYear = false;
 	

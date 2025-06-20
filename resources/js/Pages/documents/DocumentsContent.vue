@@ -11,6 +11,7 @@
 		:color="crudDialog.color"
 		:errors="crudDialog.errors"
 		:readonly="readonly"
+		:dettagliActive="dataElements.dettagli_active || false"
 		@ready="handleReadyHeader"
 		ref="headerDocumentRef"
 	/>
@@ -133,6 +134,7 @@ export default {
 			const bodyFormData = this.$refs.bodyDocumentRef?.getForm?.() || {};
 			const footerFormData = this.$refs.footerDocumentRef?.getForm?.() || {};
 			const combinedFormData = { ...this.form, ...headerFormData, ...bodyFormData, ...footerFormData };
+			
 			return combinedFormData;
 		},
 		handleReadyHeader() {
@@ -141,23 +143,49 @@ export default {
 			const entrata = this.dataElements.entrata;
 			if(entrata) headerDoc.numeroBlock = false;
 			headerDoc.data.stati = this.dataElements.stati || [];
-            headerDoc.dettagliActive = this.dataElements.dettagli_active || false;
-			if(this.dataElements.resource) {
-				if(this.crud == 'edit' || this.crud == 'show') {
-					headerDoc.form.numero = this.dataElements.resource.numero;
-					headerDoc.form.data = new Date(this.dataElements.resource.document.data);
-					headerDoc.form.entity_type = this.dataElements.resource.document.entity_type;
-					headerDoc.form.entity_id = this.dataElements.resource.document.entity_id;
-					headerDoc.form.stato = this.dataElements.resource.stato;
-					headerDoc.data.indirizzo = this.dataElements.resource.document.indirizzo;
-                    if (this.dataElements.resource.document.dettagli && this.dataElements.resource.document.dettagli.data_evasione) {
-                        this.dataElements.resource.document.dettagli.data_evasione = new Date(this.dataElements.resource.document.dettagli.data_evasione);
-                        headerDoc.data.dettagli = this.dataElements.resource.document.dettagli;
-                    }
+			
+			// Gestisci i dati in base al tipo di operazione
+			if(this.crud == 'edit' || this.crud == 'show') {
+				// Per edit e show, i dati possono essere in resource.document o direttamente in main
+				const documentData = this.dataElements.resource?.document || this.dataElements.main || {};
+				
+				if(documentData.numero) {
+					headerDoc.form.numero = documentData.numero;
 				}
+				if(documentData.data) {
+					headerDoc.form.data = new Date(documentData.data);
+				}
+				if(documentData.entity_type) {
+					headerDoc.form.entity_type = documentData.entity_type;
+				}
+				if(documentData.entity_id) {
+					headerDoc.form.entity_id = documentData.entity_id;
+				}
+				if(this.dataElements.resource?.stato) {
+					headerDoc.form.stato = this.dataElements.resource.stato;
+				}
+				if(documentData.indirizzo) {
+					headerDoc.data.indirizzo = documentData.indirizzo;
+				}
+				
+				// Gestisci i dettagli
+				if (documentData.dettagli) {
+					headerDoc.data.dettagli = documentData.dettagli;
+				} else {
+					console.log('DocumentsContent - Nessun dettaglio trovato in documentData:', documentData);
+				}
+				
+				// Gestisci le relazioni solo per show
 				if(this.crud == 'show' && entrata === false) {
-					headerDoc.data.parents = this.dataElements.resource.relation?.parents || [];
-					headerDoc.data.children = this.dataElements.resource.relation?.children || [];
+					headerDoc.data.parents = this.dataElements.resource?.relation?.parents || [];
+					headerDoc.data.children = this.dataElements.resource?.relation?.children || [];
+				}
+			}
+			
+			if(this.crud == 'create') {
+				// Per la creazione, usa i dettagli di default dal backend
+				if (this.dataElements.dettagli) {
+					headerDoc.data.dettagli = this.dataElements.dettagli;
 				}
 			}
 		},
@@ -167,13 +195,26 @@ export default {
 			bodyDoc.spedizioneActive = this.dataElements.spedizione_active || false;
 			bodyDoc.metodoPagamentoActive = this.dataElements.metodo_pagamento_active || false;
 			bodyDoc.rateActive = this.dataElements.rate_active || false;
-			if(this.dataElements.resource) {
-				if(this.crud == 'edit' || this.crud == 'show') {
-					bodyDoc.form.elementi = this.dataElements.resource.document.elementi;
-					bodyDoc.data.spedizione = this.dataElements.resource.document.spedizione;
-					bodyDoc.data.metodo_pagamento_id = this.dataElements.resource.document.metodo_pagamento_id;
-					bodyDoc.data.conto_bancario_id = this.dataElements.resource.document.conto_bancario_id;
-					let rate = this.dataElements.resource.document.rate || [];
+			
+			// Gestisci i dati in base al tipo di operazione
+			if(this.crud == 'edit' || this.crud == 'show') {
+				// Per edit e show, i dati possono essere in resource.document o direttamente in main
+				const documentData = this.dataElements.resource?.document || this.dataElements.main || {};
+				
+				if(documentData.elementi) {
+					bodyDoc.form.elementi = documentData.elementi;
+				}
+				if(documentData.spedizione) {
+					bodyDoc.data.spedizione = documentData.spedizione;
+				}
+				if(documentData.metodo_pagamento_id) {
+					bodyDoc.data.metodo_pagamento_id = documentData.metodo_pagamento_id;
+				}
+				if(documentData.conto_bancario_id) {
+					bodyDoc.data.conto_bancario_id = documentData.conto_bancario_id;
+				}
+				if(documentData.rate) {
+					let rate = documentData.rate || [];
 					rate.forEach((rata) => {
 						if (rata.data !== null) {
 							rata.data = new Date(rata.data);
@@ -186,12 +227,20 @@ export default {
 		handleReadyFooter() {
 			const footerDoc = this.$refs.footerDocumentRef;
 			if(this.dataElements.entrata === false) footerDoc.trasportoActive = this.dataElements.trasporto_active || false;
-			if(this.dataElements.resource) {
-				if(this.crud == 'edit' || this.crud == 'show') {
-					const footerDoc = this.$refs.footerDocumentRef;
-					footerDoc.form.note = this.dataElements.resource.document.note;
-					footerDoc.data.allegati = this.dataElements.resource.document.allegati || [];
-					footerDoc.data.trasporto = this.dataElements.resource.document.trasporto;
+			
+			// Gestisci i dati in base al tipo di operazione
+			if(this.crud == 'edit' || this.crud == 'show') {
+				// Per edit e show, i dati possono essere in resource.document o direttamente in main
+				const documentData = this.dataElements.resource?.document || this.dataElements.main || {};
+				
+				if(documentData.note) {
+					footerDoc.form.note = documentData.note;
+				}
+				if(documentData.allegati) {
+					footerDoc.data.allegati = documentData.allegati;
+				}
+				if(documentData.trasporto) {
+					footerDoc.data.trasporto = documentData.trasporto;
 				}
 			}
 		}

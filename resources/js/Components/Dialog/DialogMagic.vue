@@ -111,7 +111,7 @@
 												:disabled="!data.missingProductsSelected.includes(product.id)"
 											/>
 										</v-list-item-action>
-										<v-list-item-action start>
+										<!-- <v-list-item-action start>
 											<number-decimal
 												v-model="product.sconto"
 												class="me-4"
@@ -121,7 +121,7 @@
 												:hideDetails="true"
 												:disabled="!data.missingProductsSelected.includes(product.id)"
 											/>
-										</v-list-item-action>
+										</v-list-item-action> -->
 										<v-list-item-action start>
 											<number-decimal
 												v-model="product.importo"
@@ -381,22 +381,16 @@ export default {
 
 				const quantita = parseFloat(elemento.selectedQuantity) || 0;
 				const prezzo = parseFloat(elemento.selectedPrezzo) || 0;
-				let sconto = 0;
+				// let sconto = 0;
 
-				if (elemento.tipo_sconto === '%') {
-					sconto = parseFloat(elemento.sconto) / 100 || 0;
-				} else {
-					sconto = parseFloat(elemento.sconto) || 0;
-				}
+				// if (elemento.tipo_sconto === '%') {
+				// 	sconto = parseFloat(elemento.sconto) / 100 || 0;
+				// } else {
+				// 	sconto = parseFloat(elemento.sconto) || 0;
+				// }
 
 				const subtotale = quantita * prezzo;
-				let importo;
-
-				if (elemento.tipo_sconto === '%') {
-					importo = subtotale - (subtotale * sconto);
-				} else {
-					importo = subtotale - sconto;
-				}
+				const importo = subtotale;
 				console.log(quantita);
 				console.log(prezzo);
 				console.log(elemento);

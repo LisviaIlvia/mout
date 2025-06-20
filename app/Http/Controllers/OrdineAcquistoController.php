@@ -15,7 +15,13 @@ class OrdineAcquistoController extends AbstractDocumentController
 	];
 	protected bool $spedizione_active = false;
 	protected bool $metodo_pagamento_active = false;
+	protected bool $rate_active = false;
+	protected bool $dettagli_active = false;
+	protected bool $activeYear = false;
 	protected bool $export = true;
+	protected bool $pdf = false;
+	protected bool $clone = false;
+	protected bool $magic = false;
 	
 	protected array $indexSetup = [
 		'plural' => 'Ordini Acquisto',

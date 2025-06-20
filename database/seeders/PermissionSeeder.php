@@ -51,7 +51,7 @@ class PermissionSeeder extends Seeder
 	    //$actions = ['pdf', 'magic'];
 
 		$permissions[] = ['name' => "ordini-vendita.pdf"];
-		$permissions[] = ['name' => "ordini-acquisto.pdf"];
+		// $permissions[] = ['name' => "ordini-acquisto.pdf"];
 		
 		$permissions[] = ['name' => "magazzino.show"];
 		$permissions[] = ['name' => "magazzino.export"];
