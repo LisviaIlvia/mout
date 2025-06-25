@@ -30,6 +30,13 @@
 							</template>
 							<v-list-item-title>CF: {{ order.entity.codice_fiscale }}</v-list-item-title>
 						</v-list-item>
+
+						<v-list-item v-if="order.entity?.email">
+							<template v-slot:prepend>
+								<i class="fa-solid fa-envelope text-grey me-2"></i>
+							</template>
+							<v-list-item-title>Email: {{ order.entity.email }}</v-list-item-title>
+						</v-list-item>
 					</v-list>
 				</v-card>
 			</v-col>
@@ -76,48 +83,229 @@
 			</v-col>
 		</v-row>
 
-		<!-- Prodotti/Servizi -->
-		<v-row class="pa-4" v-if="order.products && order.products.length > 0">
+		<!-- Indirizzo -->
+		<v-row class="pa-4" v-if="order.indirizzo">
+			<v-col cols="12">
+				<v-card variant="outlined" class="pa-4">
+					<h3 class="text-h6 mb-3">
+						<i class="fa-solid fa-map-marker-alt me-2"></i>
+						Indirizzo di Consegna
+					</h3>
+					
+					<v-list density="compact">
+						<v-list-item v-if="order.indirizzo.nome">
+							<template v-slot:prepend>
+								<i class="fa-solid fa-user text-grey me-2"></i>
+							</template>
+							<v-list-item-title>{{ order.indirizzo.nome }}</v-list-item-title>
+						</v-list-item>
+						
+						<v-list-item v-if="order.indirizzo.indirizzo">
+							<template v-slot:prepend>
+								<i class="fa-solid fa-road text-grey me-2"></i>
+							</template>
+							<v-list-item-title>{{ order.indirizzo.indirizzo }}</v-list-item-title>
+						</v-list-item>
+						
+						<v-list-item v-if="order.indirizzo.comune || order.indirizzo.cap">
+							<template v-slot:prepend>
+								<i class="fa-solid fa-city text-grey me-2"></i>
+							</template>
+							<v-list-item-title>
+								{{ order.indirizzo.cap }} {{ order.indirizzo.comune }}
+								<span v-if="order.indirizzo.provincia">({{ order.indirizzo.provincia }})</span>
+							</v-list-item-title>
+						</v-list-item>
+						
+						<v-list-item v-if="order.indirizzo.telefono">
+							<template v-slot:prepend>
+								<i class="fa-solid fa-phone text-grey me-2"></i>
+							</template>
+							<v-list-item-title>Tel: {{ order.indirizzo.telefono }}</v-list-item-title>
+						</v-list-item>
+					</v-list>
+				</v-card>
+			</v-col>
+		</v-row>
+
+		<!-- Dettagli Tecnici -->
+		<v-row class="pa-4" v-if="order.dettagli && hasDettagliData">
+			<v-col cols="12">
+				<v-card variant="outlined" class="pa-4">
+					<h3 class="text-h6 mb-3">
+						<i class="fa-solid fa-cogs me-2"></i>
+						Dettagli Tecnici
+					</h3>
+					
+					<v-row>
+						<v-col cols="12" md="6">
+							<v-list density="compact">
+								<v-list-item v-if="order.dettagli.data_evasione">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-calendar-check text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Data Evasione: {{ formatDate(order.dettagli.data_evasione) }}</v-list-item-title>
+								</v-list-item>
+								
+								<v-list-item v-if="order.dettagli.mod_poltrona">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-chair text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Modello Poltrona: {{ order.dettagli.mod_poltrona }}</v-list-item-title>
+								</v-list-item>
+								
+								<v-list-item v-if="order.dettagli.quantita">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-hashtag text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Quantità: {{ order.dettagli.quantita }}</v-list-item-title>
+								</v-list-item>
+								
+								<v-list-item v-if="order.dettagli.fianchi_finali">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-arrows-alt-h text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Fianchi Finali: {{ order.dettagli.fianchi_finali }}</v-list-item-title>
+								</v-list-item>
+								
+								<v-list-item v-if="order.dettagli.interasse_cm">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-ruler-horizontal text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Interasse: {{ order.dettagli.interasse_cm }} cm</v-list-item-title>
+								</v-list-item>
+							</v-list>
+						</v-col>
+						
+						<v-col cols="12" md="6">
+							<v-list density="compact">
+								<v-list-item v-if="order.dettagli.largh_bracciolo_cm">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-ruler text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Larghezza Bracciolo: {{ order.dettagli.largh_bracciolo_cm }} cm</v-list-item-title>
+								</v-list-item>
+								
+								<v-list-item v-if="order.dettagli.rivestimento">
+									<template v-slot:prepend>
+										<i class="fa-solid fa-palette text-grey me-2"></i>
+									</template>
+									<v-list-item-title>Rivestimento: {{ order.dettagli.rivestimento }}</v-list-item-title>
+								</v-list-item>
+							</v-list>
+						</v-col>
+					</v-row>
+
+					<!-- Opzioni Aggiuntive -->
+					<div v-if="hasDettagliOptions" class="mt-4">
+						<h4 class="text-subtitle-1 mb-2">Opzioni Aggiuntive:</h4>
+						<v-row>
+							<v-col cols="6" md="3" v-if="order.dettagli.ricamo_logo">
+								<v-chip color="success" size="small">
+									<i class="fa-solid fa-check me-1"></i>
+									Ricamo Logo
+								</v-chip>
+							</v-col>
+							<v-col cols="6" md="3" v-if="order.dettagli.pendenza">
+								<v-chip color="success" size="small">
+									<i class="fa-solid fa-check me-1"></i>
+									Pendenza
+								</v-chip>
+							</v-col>
+							<v-col cols="6" md="3" v-if="order.dettagli.fissaggio_pavimento">
+								<v-chip color="success" size="small">
+									<i class="fa-solid fa-check me-1"></i>
+									Fissaggio Pavimento
+								</v-chip>
+							</v-col>
+							<v-col cols="6" md="3" v-if="order.dettagli.montaggio">
+								<v-chip color="success" size="small">
+									<i class="fa-solid fa-check me-1"></i>
+									Montaggio
+								</v-chip>
+							</v-col>
+						</v-row>
+					</div>
+				</v-card>
+			</v-col>
+		</v-row>
+
+		<!-- Elementi Ordinati -->
+		<v-row class="pa-4" v-if="order.elementi && order.elementi.length > 0">
 			<v-col cols="12">
 				<v-card variant="outlined">
 					<v-card-title class="text-h6">
 						<i class="fa-solid fa-boxes me-2"></i>
-						Prodotti/Servizi
+						Elementi Ordinati
 					</v-card-title>
 					
-					<v-data-table
-						:headers="productHeaders"
-						:items="order.products"
-						:items-per-page="10"
-						density="compact"
-						class="elevation-0"
-					>
-						<template v-slot:item.product.nome="{ item }">
-							{{ item.product?.nome || 'N/A' }}
-						</template>
+					<div v-for="(elementi, categoria) in order.elementiPerCategoria" :key="categoria" class="mb-4">
+						<!-- Header categoria -->
+						<div class="pa-3 bg-grey-lighten-4">
+							<h4 class="text-subtitle-1 font-weight-bold">{{ categoria.toUpperCase() }}</h4>
+						</div>
 						
-						<template v-slot:item.quantita="{ item }">
-							{{ item.quantita }}
-						</template>
-						
-						<template v-slot:item.prezzo="{ item }">
-							€ {{ formatPrice(item.prezzo) }}
-						</template>
-						
-						<template v-slot:item.aliquota_iva.aliquota="{ item }">
-							{{ item.aliquotaIva?.aliquota || '0' }}%
-						</template>
-						
-						<template v-slot:item.totale="{ item }">
-							€ {{ formatPrice(item.quantita * item.prezzo) }}
-						</template>
-					</v-data-table>
+						<!-- Tabella elementi per categoria -->
+						<v-data-table
+							:headers="getHeadersForCategory(categoria)"
+							:items="elementi"
+							:items-per-page="10"
+							density="compact"
+							class="elevation-0"
+							hide-default-footer
+						>
+							<!-- Codice -->
+							<template v-slot:item.codice="{ item }">
+								{{ item.codice || '-' }}
+							</template>
+							
+							<!-- Nome/Descrizione -->
+							<template v-slot:item.nome="{ item }">
+								{{ item.nome || item.descrizione || '-' }}
+							</template>
+							
+							<!-- Fornitore -->
+							<template v-slot:item.fornitore="{ item }">
+								{{ item.fornitore_id ? getFornitoreName(item.fornitore_id) : '-' }}
+							</template>
+							
+							<!-- Riferimento -->
+							<template v-slot:item.riferimento="{ item }">
+								{{ item.riferimento || '-' }}
+							</template>
+							
+							<!-- Quantità -->
+							<template v-slot:item.quantita="{ item }">
+								{{ item.quantita || '-' }}
+							</template>
+							
+							<!-- Unità di misura -->
+							<template v-slot:item.unita_misura="{ item }">
+								{{ item.unita_misura || '-' }}
+							</template>
+							
+							<!-- Prezzo -->
+							<template v-slot:item.prezzo="{ item }">
+								{{ item.prezzo ? `€ ${formatPrice(item.prezzo)}` : '-' }}
+							</template>
+							
+							<!-- IVA -->
+							<template v-slot:item.iva="{ item }">
+								{{ item.iva?.aliquota ? `${item.iva.aliquota}%` : '-' }}
+							</template>
+							
+							<!-- Importo -->
+							<template v-slot:item.importo="{ item }">
+								{{ item.importo ? `€ ${formatPrice(item.importo)}` : '-' }}
+							</template>
+						</v-data-table>
+					</div>
 				</v-card>
 			</v-col>
 		</v-row>
 
 		<!-- Riepilogo totale -->
-		<v-row class="pa-4" v-if="order.products && order.products.length > 0">
+		<v-row class="pa-4" v-if="order.elementi && order.elementi.length > 0">
 			<v-col cols="12" md="6" offset-md="6">
 				<v-card variant="outlined" class="pa-4">
 					<h3 class="text-h6 mb-3">
@@ -149,6 +337,51 @@
 							</template>
 						</v-list-item>
 					</v-list>
+				</v-card>
+			</v-col>
+		</v-row>
+
+		<!-- Allegati -->
+		<v-row class="pa-4" v-if="order.media && order.media.length > 0">
+			<v-col cols="12">
+				<v-card variant="outlined" class="pa-4">
+					<h3 class="text-h6 mb-3">
+						<i class="fa-solid fa-paperclip me-2"></i>
+						Allegati
+					</h3>
+					
+					<v-row>
+						<v-col cols="12" md="4" v-for="media in order.media" :key="media.id">
+							<v-card variant="outlined" class="pa-3">
+								<div class="d-flex align-center mb-2">
+									<i :class="getFileIcon(media.mime_type)" class="me-2"></i>
+									<span class="text-subtitle-2">{{ media.name }}</span>
+								</div>
+								
+								
+								<!-- Mostra immagine se è un file immagine -->
+								<div v-if="isImage(media.mime_type)" class="mt-2">
+									<img 
+										:src="getMediaUrl(media)" 
+										:alt="media.name"
+										class="img-fluid"
+										style="max-width: 100%; max-height: 200px; object-fit: contain;"
+									>
+								</div>
+								
+								<!-- Per file non immagine -->
+								<div v-else class="mt-2">
+									<v-chip 
+										:color="getFileColor(media.mime_type)" 
+										size="small"
+										variant="outlined"
+									>
+										{{ getFileTypeLabel(media.mime_type) }}
+									</v-chip>
+								</div>
+							</v-card>
+						</v-col>
+					</v-row>
 				</v-card>
 			</v-col>
 		</v-row>
@@ -198,6 +431,27 @@ export default {
 				return 'Ordine di Acquisto';
 			}
 			return 'Ordine';
+		},
+		
+		// Verifica se ci sono dati nei dettagli
+		hasDettagliData() {
+			if (!this.order.dettagli) return false;
+			return this.order.dettagli.data_evasione ||
+				   this.order.dettagli.mod_poltrona || 
+				   this.order.dettagli.quantita || 
+				   this.order.dettagli.fianchi_finali || 
+				   this.order.dettagli.interasse_cm || 
+				   this.order.dettagli.largh_bracciolo_cm || 
+				   this.order.dettagli.rivestimento;
+		},
+		
+		// Verifica se ci sono opzioni nei dettagli
+		hasDettagliOptions() {
+			if (!this.order.dettagli) return false;
+			return this.order.dettagli.ricamo_logo || 
+				   this.order.dettagli.pendenza || 
+				   this.order.dettagli.fissaggio_pavimento || 
+				   this.order.dettagli.montaggio;
 		}
 	},
 	methods: {
@@ -233,21 +487,95 @@ export default {
 		
 		// Calcola l'imponibile totale
 		calcolaImponibile() {
-			return this.order.products.reduce((total, product) => total + (product.quantita * product.prezzo), 0);
+			if (!this.order.elementi) return 0;
+			return this.order.elementi.reduce((total, elemento) => {
+				if (elemento.tipo === 'descrizione') return total;
+				return total + (elemento.importo || 0);
+			}, 0);
 		},
 		
 		// Calcola l'IVA totale
 		calcolaIva() {
-			return this.order.products.reduce((total, product) => {
-				const aliquota = product.aliquotaIva?.aliquota || 0;
-				return total + (product.quantita * product.prezzo * aliquota / 100);
+			if (!this.order.elementi) return 0;
+			return this.order.elementi.reduce((total, elemento) => {
+				if (elemento.tipo === 'descrizione') return total;
+				const aliquota = elemento.iva?.aliquota || 0;
+				const importo = elemento.importo || 0;
+				return total + (importo * aliquota / 100);
 			}, 0);
 		},
 		
-		// Calcola il totale
-		calcolaTotale() {
-			return this.calcolaImponibile() + this.calcolaIva();
+	// Calcola il totale
+	calcolaTotale() {
+		return this.calcolaImponibile() + this.calcolaIva();
+	},
+		
+	// Ottiene gli headers appropriati per categoria
+	getHeadersForCategory(categoria) {
+		if (categoria === 'Descrizioni') {
+			return [
+				{ title: 'Descrizione', key: 'descrizione', sortable: false }
+			];
 		}
+		
+		return [
+			{ title: 'Codice', key: 'codice', sortable: true },
+			{ title: 'Nome', key: 'nome', sortable: true },
+			{ title: 'Fornitore', key: 'fornitore', sortable: true },
+			{ title: 'Rif.', key: 'riferimento', sortable: true },
+			{ title: 'Q.tà', key: 'quantita', sortable: true, align: 'center' },
+			{ title: 'U.M.', key: 'unita_misura', sortable: true, align: 'center' },
+			{ title: 'Prezzo Unit.', key: 'prezzo', sortable: true, align: 'end' },
+			{ title: 'IVA', key: 'iva', sortable: true, align: 'center' },
+			{ title: 'Importo', key: 'importo', sortable: true, align: 'end' }
+		];
+	},
+		
+	// Ottiene il nome del fornitore
+	getFornitoreName(fornitoreId) {
+		if (!this.order.fornitori) return `Fornitore ${fornitoreId}`;
+		const fornitore = this.order.fornitori.find(f => f.id === fornitoreId);
+		return fornitore ? fornitore.nome : `Fornitore ${fornitoreId}`;
+	},
+		
+	// Verifica se è un'immagine
+	isImage(mimeType) {
+		return mimeType && mimeType.startsWith('image/');
+	},
+		
+	// Ottiene l'URL del media
+	getMediaUrl(media) {
+		// Usa la rotta pubblica per i file media
+		const type = this.order.type === 'ordini-vendita' ? 'ordini-vendita' : 'ordini-acquisto';
+		return `/public-media/${type}/${media.name}`;
+	},
+		
+	// Ottiene l'icona del file
+	getFileIcon(mimeType) {
+		if (this.isImage(mimeType)) return 'fa-solid fa-image';
+		if (mimeType?.includes('pdf')) return 'fa-solid fa-file-pdf';
+		if (mimeType?.includes('word')) return 'fa-solid fa-file-word';
+		if (mimeType?.includes('excel')) return 'fa-solid fa-file-excel';
+		return 'fa-solid fa-file';
+	},
+		
+	// Ottiene il colore del file
+	getFileColor(mimeType) {
+		if (this.isImage(mimeType)) return 'success';
+		if (mimeType?.includes('pdf')) return 'error';
+		if (mimeType?.includes('word')) return 'primary';
+		if (mimeType?.includes('excel')) return 'success';
+		return 'grey';
+	},
+		
+	// Ottiene il label del tipo di file
+	getFileTypeLabel(mimeType) {
+		if (this.isImage(mimeType)) return 'Immagine';
+		if (mimeType?.includes('pdf')) return 'PDF';
+		if (mimeType?.includes('word')) return 'Word';
+		if (mimeType?.includes('excel')) return 'Excel';
+		return 'File';
+	}
 	}
 };
 </script>

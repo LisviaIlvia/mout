@@ -552,6 +552,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 		// Aggiungi prodotti
 		foreach ($document->products as $product) {
+			$categoria = $product->product->categories->first()->nome ?? null;
 			// Determina il tipo in base al prodotto se il campo type è null
 			$tipo = $product->type;
 			if ($tipo === null && $product->product) {
@@ -577,6 +578,8 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			$elementi->push([
 				'id' => $product->id,
 				'tipo' => $tipoMappato,
+				'codice' => $product->product->codice,
+				'categoria' => $categoria,
 				'product_id' => $product->product_id,
 				'nome' => $product->product->nome,
 				'quantita' => $product->quantita,

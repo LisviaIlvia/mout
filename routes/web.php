@@ -17,6 +17,26 @@ Route::prefix('qr')->name('qr.')->group(function () {
     Route::get('/download', [\App\Http\Controllers\QrCodeController::class, 'download'])->name('download');
 });
 
+// Rotte pubbliche per i file media degli ordini
+Route::prefix('public-media')->name('public.media.')->group(function () {
+    Route::get('/ordini-vendita/{path}', function ($path) {
+        $path = str_replace('..', '', $path); // sicurezza
+        $fullPath = storage_path('app/private/media/ordini-vendita/' . $path);
+        if (file_exists($fullPath)) {
+            return response()->file($fullPath);
+        }
+        abort(404);
+    })->where('path', '.*')->name('ordini-vendita');
+    
+    Route::get('/ordini-acquisto/{filename}', function ($filename) {
+        $path = storage_path('app/private/media/ordini-acquisto/' . $filename);
+        if (file_exists($path)) {
+            return response()->file($path);
+        }
+        abort(404);
+    })->name('ordini-acquisto');
+});
+
 Route::middleware('auth')->group(function () {
 	Route::get('/dashboard', [\App\Http\Controllers\HomeController::class, 'index'])->name('dashboard');
 	

@@ -56,20 +56,7 @@ class QrCodeController extends Controller
      */
     public function order($id)
     {
-        // Debug: log dell'ID ricevuto
-        \Log::info("QR Code - Richiesta per ordine ID: " . $id);
-        
-        // Debug: verifica se l'ordine esiste
-        $orderExists = Document::where('id', $id)->exists();
-        \Log::info("QR Code - Ordine con ID {$id} esiste: " . ($orderExists ? 'SI' : 'NO'));
-        
-        // Debug: lista tutti gli ordini per verificare
-        $allOrders = Document::where('type', 'ordini-vendita')
-            ->orWhere('type', 'ordini-acquisto')
-            ->select('id', 'numero', 'type')
-            ->get();
-        \Log::info("QR Code - Tutti gli ordini disponibili: " . $allOrders->toJson());
-        
+       
         // CORREZIONE: Cerca l'ordine con l'ID specifico e il tipo corretto
         $order = Document::where('id', $id)
             ->where(function($query) {
@@ -77,14 +64,8 @@ class QrCodeController extends Controller
                       ->orWhere('type', 'ordini-acquisto');
             })->firstOrFail();
 
-        // Debug: log dei dati dell'ordine trovato
-        \Log::info("QR Code - Ordine trovato: ID=" . $order->id . ", Numero=" . $order->numero . ", Cliente=" . $order->entity->nome);
-
         // Crea l'URL diretto per la vista pubblica
         $publicUrl = route('qr.order.view', $order->id);
-
-        // Debug: log dell'URL generato
-        \Log::info("QR Code - URL generato: " . $publicUrl);
 
         // Genera il QR code con direttamente l'URL
         // Questo permette agli scanner QR di riconoscerlo come link
@@ -102,8 +83,7 @@ class QrCodeController extends Controller
             'url' => $publicUrl
         ];
 
-        // Debug: log dei dati che verranno restituiti
-        \Log::info("QR Code - Dati restituiti: " . json_encode($qrData));
+      
 
         return response()->json([
             'qr_code' => (string) $qrCode,
@@ -127,13 +107,84 @@ class QrCodeController extends Controller
                 'entity', 
                 'products.product', 
                 'products.aliquotaIva',  // Carica l'aliquota IVA direttamente dal DocumentProduct
-                'dettagli'
+                'products.product.categories', // Carica le categorie dei prodotti
+                'altro.aliquotaIva', // Carica gli altri elementi
+                'descrizioni', // Carica le descrizioni
+                'dettagli', // Carica i dettagli tecnici
+                'indirizzo', // Carica l'indirizzo
+                'media' // Carica gli allegati
             ]) // Carica le relazioni necessarie
             ->firstOrFail();
 
         // Determina il tipo di ordine per il titolo
         $orderType = $order->type === 'ordini-vendita' ? 'Ordine di Vendita' : 'Ordine di Acquisto';
         $title = $orderType . ' - ' . $order->numero;
+
+        // Prepara gli elementi come nel PDF
+        $elementi = collect();
+        
+        // Prodotti
+        foreach ($order->products as $product) {
+            $elementi->push([
+                'id' => $product->id,
+                'tipo' => $product->type,
+                'product_id' => $product->product_id,
+                'codice' => $product->product->codice ?? null,
+                'nome' => $product->product->nome ?? null,
+                'quantita' => $product->quantita,
+                'unita_misura' => $product->product->unita_misura ?? 'NR',
+                'prezzo' => $product->prezzo,
+                'importo' => $product->quantita * $product->prezzo,
+                'fornitore_id' => $product->fornitore_id,
+                'riferimento' => $product->riferimento,
+                'iva' => [
+                    'aliquota_iva_id' => $product->aliquota_iva_id,
+                    'aliquota' => $product->aliquotaIva->aliquota ?? 0
+                ],
+                'categoria' => [
+                    'nome' => $product->product->categories->first()->nome ?? 'Senza categoria'
+                ],
+                'order' => $product->order
+            ]);
+        }
+
+        // Altri elementi
+        foreach ($order->altro as $altro) {
+            $elementi->push([
+                'id' => $altro->id,
+                'tipo' => 'altro',
+                'nome' => $altro->nome,
+                'quantita' => $altro->quantita,
+                'unita_misura' => $altro->unita_misura,
+                'prezzo' => $altro->prezzo,
+                'importo' => $altro->quantita * $altro->prezzo,
+                'iva' => [
+                    'aliquota_iva_id' => $altro->aliquota_iva_id,
+                    'aliquota' => $altro->aliquotaIva->aliquota ?? 0
+                ],
+                'order' => $altro->order
+            ]);
+        }
+
+        // Descrizioni
+        foreach ($order->descrizioni as $descrizione) {
+            $elementi->push([
+                'id' => $descrizione->id,
+                'tipo' => 'descrizione',
+                'descrizione' => $descrizione->descrizione,
+                'order' => $descrizione->order
+            ]);
+        }
+
+        // Ordina per order
+        $elementi = $elementi->sortBy('order')->values();
+
+        // Raggruppa per categoria
+        $elementiPerCategoria = $elementi->groupBy(function($item) {
+            if ($item['tipo'] === 'descrizione') return 'Descrizioni';
+            if ($item['tipo'] === 'altro') return 'Altri Elementi';
+            return $item['categoria']['nome'] ?? 'Senza categoria';
+        });
 
         // Struttura i dati come nelle viste show/edit
         $orderData = [
@@ -144,7 +195,10 @@ class QrCodeController extends Controller
             'note' => $order->note,
             'type' => $order->type,
             'entity' => $order->entity,
+            'indirizzo' => $order->indirizzo,
             'dettagli' => $order->dettagli,
+            'media' => $order->media,
+            'fornitori' => \App\Models\Entity::fornitori()->get(['id', 'nome']), // Carica i fornitori
             'products' => $order->products->map(function($product) {
                 return [
                     'id' => $product->id,
@@ -157,7 +211,9 @@ class QrCodeController extends Controller
                     'riferimento' => $product->riferimento,
                     'order' => $product->order
                 ];
-            })
+            }),
+            'elementi' => $elementi,
+            'elementiPerCategoria' => $elementiPerCategoria
         ];
 
         // Restituisce la vista Inertia con i dati dell'ordine
@@ -243,8 +299,6 @@ class QrCodeController extends Controller
                 ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
 
         } catch (\Exception $e) {
-            // Se il formato non è supportato, fallback su SVG
-            \Log::warning("QR Code - Formato {$format} non supportato, fallback su SVG: " . $e->getMessage());
             
             $qrCode = QrCode::format('svg')
                 ->size(400)
