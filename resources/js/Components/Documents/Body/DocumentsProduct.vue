@@ -31,6 +31,29 @@
 			@update:modelValue="updateElement"
 		></v-select>
 	</v-col>
+	<v-col class="py-0 col-fornitore" v-if="fornitori && fornitori.length > 0 && isVendita">
+		<v-select
+			v-model="fornitore_id"
+			:items="fornitori"
+			item-value="id"
+			item-title="nome"
+			label="Fornitore"
+			:color="color"
+			hide-details
+			:readonly="readonly"			
+			@update:modelValue="updateElement"
+		></v-select>
+	</v-col>
+	<v-col class="py-0 col-riferimento" v-if="fornitori && fornitori.length > 0 && isVendita">
+		<v-text-field
+			v-model="riferimento"
+			label="Riferimento"
+			:color="color"
+			hide-details
+			:readonly="readonly"
+			@update:modelValue="updateElement"
+		></v-text-field>
+	</v-col>
 	<v-col class="py-0 col-prezzo">
 		<number-decimal
 			v-model="prezzo"
@@ -115,12 +138,20 @@
 		max-width: 94%;
 	}
 	.col-nome {
-		flex: 0 0 28%;
-		max-width: 28%;
+		flex: 0 0 18%;
+		max-width: 18%;
 	}
 	.col-prezzo {
 		flex: 0 0 8%;
 		max-width: 8%;
+	}
+	.col-fornitore {
+		flex: 0 0 12%;
+		max-width: 12%;
+	}
+	.col-riferimento {
+		flex: 0 0 10%;
+		max-width: 9%;
 	}
 	/* .col-tipo-sconto {
 		flex: 0 0 8%;
@@ -156,6 +187,10 @@ export default {
 			type: Object,
 			required: true
 		},
+		fornitori: {
+			type: Array,
+			default: () => []
+		},
 		// ricorrenze: {
 		// 	type: Array,
 		// 	required: true
@@ -169,6 +204,10 @@ export default {
 			required: true
 		},
 		readonly: {
+			type: Boolean,
+			default: false
+		},
+		isVendita: {
 			type: Boolean,
 			default: false
 		}

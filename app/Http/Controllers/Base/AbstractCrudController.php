@@ -42,6 +42,7 @@ abstract class AbstractCrudController extends Controller
 		$collection = $this->getCollectionIndex();
 		
 		$props = $this->getPropsIndex($collection);
+	
 
 		return Inertia::render($this->getComponentIndex(), $props);
 	}
@@ -325,7 +326,7 @@ abstract class AbstractCrudController extends Controller
 		$permission = $this->permission ?? $this->pattern;
 
 		if($object) {
-			return collect($actionPermissions)->mapWithKeys(function ($permissionAction, $routeAction) use ($user, $pattern, $permission, $object) {
+			$actions = collect($actionPermissions)->mapWithKeys(function ($permissionAction, $routeAction) use ($user, $pattern, $permission, $object) {
 				if ($permissionAction === null) {
 					return [$routeAction => null];
 				}
@@ -347,6 +348,16 @@ abstract class AbstractCrudController extends Controller
 
 				return $route;
 			})->toArray();
+
+			// Aggiungi azione QR code solo per ordini vendita e acquisto
+			// Il pattern indica il tipo di entità (es: 'ordini-vendita', 'ordini-acquisto')
+			if (in_array($pattern, ['ordini-vendita', 'ordini-acquisto'])) {
+				$actions['qr'] = true;
+			} else {
+				$actions['qr'] = false; // Nasconde il pulsante per altre entità
+			}
+
+			return $actions;
 		} 
 		
 		if($type != null) return $user->can($pattern . '.' . $type) ? route($pattern . '.' . $type, false): false;
@@ -466,13 +477,29 @@ abstract class AbstractCrudController extends Controller
 	**/
 	private function validationData(string $type, Model $object = null) 
 	{
+		// Debug: log del tipo di operazione
+		\Log::info("validationData chiamato per tipo: " . $type);
+		
 		$object = $object ?? new $this->model;
         $validationData = $this->setValidation($object);
 
         $additionalRules = $type === 'store' ? $validationData['store'] ?? [] : $validationData['update'] ?? [];
         $rules = array_merge($validationData['rules'] ?? [], $additionalRules);
 
-        return request()->validate($rules, $validationData['messages'] ?? []);
+        // Debug: log delle regole di validazione
+        \Log::info("Regole di validazione per {$type}:", $rules);
+
+        try {
+            $validatedData = request()->validate($rules, $validationData['messages'] ?? []);
+            \Log::info("Validazione completata per {$type}");
+            return $validatedData;
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error("Errore di validazione per {$type}:", ['errors' => $e->errors()]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error("Errore generico in validationData per {$type}:", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            throw $e;
+        }
 	}
 
 	/**

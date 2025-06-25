@@ -32,11 +32,9 @@
 						<v-col cols="auto" class="text-right mt-n3" v-if="effectiveDialogSetup.fullscreen">
 							<v-btn
 								color="secondary"
-								variant="text"
-								icon="fa-solid fa-xmark"
-								size="x-large"
+								variant="outlined"
 								@click="closeDialog"
-							></v-btn>
+							>Chiudi</v-btn>
 						</v-col>
 						<v-col cols="auto" class="text-right mt-n3" v-else>
 							<v-btn color="secondary" icon="fa-solid fa-circle-info" variant="text">

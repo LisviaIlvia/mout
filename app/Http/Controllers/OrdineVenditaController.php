@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Base\AbstractDocumentController;
 use App\Exports\OrdineVenditaExport;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class OrdineVenditaController extends AbstractDocumentController
 {
@@ -19,7 +20,7 @@ class OrdineVenditaController extends AbstractDocumentController
     protected bool $dettagli_active = true;
 	protected bool $activeYear = false;
 	protected bool $export = true;
-	protected bool $pdf = false;
+	protected bool $pdf = true;
 	protected bool $clone = true;
 	protected bool $magic = true;
 
@@ -48,4 +49,42 @@ class OrdineVenditaController extends AbstractDocumentController
 	protected array $exportSetup = [
 		'class' => OrdineVenditaExport::class
 	];
+
+	/**
+	 * Genera il PDF dell'ordine vendita
+	 *
+	 * @param int $id ID dell'ordine vendita
+	 * @return \Symfony\Component\HttpFoundation\Response
+	 */
+	public function pdf($id)
+	{
+		$document = $this->resolveModel($id);
+		
+		// Carica le relazioni necessarie
+		$document->load([
+			'entity',
+			'indirizzo',
+			'products.product.aliquotaIva',
+			'products.product.categories',
+			'altro.aliquotaIva',
+			'descrizioni',
+			'dettagli'
+		]);
+
+		// Prepara i dati per il template
+		$data = [
+			'document' => $document,
+			'elementi' => $this->getElementi($document),
+			'azienda' => \App\Models\Azienda::first(),
+			'aziendaIndirizzi' => \App\Models\AziendaIndirizzo::where('azienda_id', 1)->get(),
+		];
+
+		// Genera il PDF
+		$pdf = Pdf::view('pdf.ordine-vendita', $data)
+			->format('a4')
+			->margins(15, 15, 15, 15)
+			->name('ordine-vendita-' . $document->numero . '.pdf');
+
+		return $pdf->download();
+	}
 }

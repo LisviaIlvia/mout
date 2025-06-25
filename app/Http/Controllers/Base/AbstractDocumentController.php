@@ -25,6 +25,8 @@ use Spatie\LaravelPdf\Facades\Pdf;
 use Spatie\Browsershot\Browsershot;
 use Spatie\LaravelPdf\Enums\Unit;
 
+
+
 abstract class AbstractDocumentController extends AbstractCrudController
 {
 	protected string $prefix_code = '';
@@ -129,6 +131,8 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 	}
 
+// aggiungo fornitore_id a DocumentProduct
+
 	protected function afterStore(&$object, $validatedData)
 	{
 		DocumentIndirizzo::create(array_merge(['document_id' => $object->id], $validatedData['indirizzo']));
@@ -166,19 +170,45 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 		if (!empty($validatedData['elementi'])) {
 			foreach ($validatedData['elementi'] as $key => $element) {
-
+// Modificare il salvataggio per includere il fornitore_id
 				switch($element['tipo']) {
 					case 'merci':
 					case 'servizi':
-						DocumentProduct::create([
+						// Log temporaneo per debug
+						\Log::info("Salvando elemento {$key}:", ['element' => $element]);
+						
+						// CORREZIONE: Usa product_id invece di id per i prodotti
+						$productId = $element['product_id'] ?? null;
+						
+						// Se non c'è product_id, cerca di recuperarlo dal nome del prodotto
+						if (!$productId && isset($element['nome'])) {
+							$product = Product::where('nome', $element['nome'])->first();
+							$productId = $product ? $product->id : null;
+						}
+						
+						// Verifica che il prodotto esista
+						if (!$productId) {
+							\Log::error("Prodotto non trovato per elemento {$key}: " . json_encode($element));
+							continue 2; // Salta questo elemento e continua il ciclo foreach esterno
+						}
+						
+						$productData = [
 							'document_id' => $object->id,
-							'product_id' => request()->elementi[$key]['id'],
+							'product_id' => $productId,
 							'type' =>  $element['tipo'],
 							'quantita' => $element['quantita'],
 							'prezzo' => $element['prezzo'],
 							'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 							'order' => $key
-						]);
+						];
+						
+						// Aggiungi fornitore_id e riferimento solo per documenti di vendita
+						if (in_array('clienti', $this->intestatari)) {
+							$productData['fornitore_id'] = $element['fornitore_id'] ?? null;
+							$productData['riferimento'] = $element['riferimento'] ?? null;
+						}
+						
+						DocumentProduct::create($productData);
 						break;
 					case 'altro':
 						DocumentAltro::create([
@@ -254,12 +284,20 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 	}
 
+// aggiungo fornitore_id a DocumentProduct
+
 	protected function beforeUpdate(&$validatedData)
 	{
+		// Debug: log dei dati ricevuti
+		\Log::info("beforeUpdate chiamato");
+		\Log::info("validatedData keys: " . implode(', ', array_keys($validatedData)));
+		
 		$validatedData['type'] =  $this->pattern;
 
 		// Preprocess boolean fields in dettagli if they exist
 		if ($this->dettagli_active && isset($validatedData['dettagli'])) {
+			\Log::info("Processando dettagli: " . json_encode($validatedData['dettagli']));
+			
 			$booleanFields = ['ricamo_logo', 'pendenza', 'fissaggio_pavimento', 'montaggio'];
 			foreach ($booleanFields as $field) {
 				if (isset($validatedData['dettagli'][$field])) {
@@ -291,10 +329,17 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		// 	if($validatedData['conto_bancario_id'] == '0' || $validatedData['conto_bancario_id'] == null) unset($validatedData['conto_bancario_id']);
 		// }
 
+		\Log::info("beforeUpdate completato");
 	}
+
+// aggiungo fornitore_id a DocumentProduct
 
 	protected function afterUpdate(&$object, $validatedData)
 	{
+		// Debug: log dei dati ricevuti
+		\Log::info("afterUpdate chiamato per documento ID: " . $object->id);
+		\Log::info("validatedData keys: " . implode(', ', array_keys($validatedData)));
+		
 		if (isset($validatedData['indirizzo'])) {
 			$object->indirizzo()->delete();
 			DocumentIndirizzo::create(array_merge(['document_id' => $object->id], $validatedData['indirizzo']));
@@ -330,31 +375,77 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		}
 
 		if (isset($validatedData['elementi'])) {
-			$object->products()->delete();
-			$object->altro()->delete();
-			$object->descrizioni()->delete();
+			// Debug: log degli elementi
+			\Log::info("Elementi da processare: " . json_encode($validatedData['elementi']));
+			\Log::info("Tipo di elementi: " . gettype($validatedData['elementi']));
+			\Log::info("Elementi è array: " . (is_array($validatedData['elementi']) ? 'SI' : 'NO'));
+			\Log::info("Elementi è empty: " . (empty($validatedData['elementi']) ? 'SI' : 'NO'));
+			
+			// Controlla che elementi sia un array e non sia null prima di eliminare
+			if ($validatedData['elementi'] !== null && is_array($validatedData['elementi']) && !empty($validatedData['elementi'])) {
+				$object->products()->delete();
+				$object->altro()->delete();
+				$object->descrizioni()->delete();
 
-			if (!empty($validatedData['elementi'])) {
 				foreach ($validatedData['elementi'] as $key => $element) {
+					// Debug: log di ogni elemento
+					\Log::info("Processando elemento {$key}:", ['element' => $element]);
+					
 					switch($element['tipo']) {
 						case 'merci':
 						case 'servizi':
-							DocumentProduct::create([
+							// CORREZIONE: Usa product_id invece di id per i prodotti
+							$productId = $element['product_id'] ?? null;
+							
+							// Se non c'è product_id, cerca di recuperarlo dal nome del prodotto
+							if (!$productId && isset($element['nome'])) {
+								$product = Product::where('nome', $element['nome'])->first();
+								$productId = $product ? $product->id : null;
+							}
+							
+							\Log::info("Product ID per elemento {$key}: " . $productId);
+							
+							// Verifica che il prodotto esista
+							if (!$productId) {
+								\Log::error("Prodotto non trovato per elemento {$key}: " . json_encode($element));
+								continue 2; // Salta questo elemento e continua il ciclo foreach esterno
+							}
+							
+							$productData = [
 								'document_id' => $object->id,
-								'product_id' => request()->elementi[$key]['id'],
+								'product_id' => $productId,
 								'type' =>  $element['tipo'],
 								'quantita' => $element['quantita'],
 								'prezzo' => $element['prezzo'],
 								'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 								'order' => $key
-							]);
+							];
+							
+							// Aggiungi fornitore_id e riferimento solo per documenti di vendita
+							if (in_array('clienti', $this->intestatari)) {
+								$productData['fornitore_id'] = $element['fornitore_id'] ?? null;
+								$productData['riferimento'] = $element['riferimento'] ?? null;
+							}
+							
+							\Log::info("Creando DocumentProduct con dati:", $productData);
+							DocumentProduct::create($productData);
 							break;
 						case 'altro':
+							// Debug: verifica se request()->elementi[$key]['unita_misura'] esiste
+							$unitaMisura = null;
+							if (request()->has('elementi') && isset(request()->elementi[$key]['unita_misura'])) {
+								$unitaMisura = request()->elementi[$key]['unita_misura'];
+							} else {
+								// Fallback: cerca l'unità di misura nell'elemento stesso
+								$unitaMisura = $element['unita_misura'] ?? null;
+							}
+							\Log::info("Unità misura per elemento {$key}: " . $unitaMisura);
+							
 							DocumentAltro::create([
 								'document_id' => $object->id,
 								'nome' => $element['nome'],
 								'quantita' => $element['quantita'],
-								'unita_misura' => request()->elementi[$key]['unita_misura'],
+								'unita_misura' => $unitaMisura,
 								'prezzo' => $element['prezzo'],
 								'aliquota_iva_id' => $element['iva']['aliquota_iva_id'],
 								'order' => $key
@@ -368,6 +459,12 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							]);
 							break;
 					}
+				}
+			} else {
+				if ($validatedData['elementi'] === null) {
+					\Log::warning("Elementi è NULL per documento ID: " . $object->id . ". Questo indica un problema nel frontend.");
+				} else {
+					\Log::warning("Elementi non validi o vuoti per documento ID: " . $object->id . ". Elementi: " . json_encode($validatedData['elementi']));
 				}
 			}
 		}
@@ -392,6 +489,8 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				]);
 			}
 		}
+		
+		\Log::info("afterUpdate completato per documento ID: " . $object->id);
 	}
 
 	protected function setJsonData(string $type, Model|Collection $object)
@@ -445,7 +544,9 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		return $data;
 	}
 
-	private function getElementi(Document $document)
+	//  Modificare il metodo getElementi per includere il fornitore
+	// Modifico il metodo da private a protected per poterlo utilizzare nel controller figlio
+	protected function getElementi(Document $document)
 	{
 		$elementi = collect();
 
@@ -482,6 +583,8 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'prezzo' => $product->prezzo,
 				'unita_misura' => $product->product->unita_misura ?? 'NR',
 				'importo' => $product->quantita * $product->prezzo,
+				'fornitore_id' => $product->fornitore_id,
+				'riferimento' => $product->riferimento,
 				'iva' => [
 					'aliquota_iva_id' => $product->aliquota_iva_id,
 					'aliquota' => $product->aliquotaIva->aliquota
@@ -549,11 +652,26 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		return $mapping[$tipo] ?? 'merci';
 	}
 
+	// Aggiungere i fornitori ai dati passati al frontend
 	protected function setOtherData(string $type, Model $object)
 	{
 		$data['aliquote_iva'] = AliquotaIva::all();
 		$data['tipi_intestatari'] = $this->tipi_intestatari;
 		$data['intestatari'] = $this->getIntestatari();
+		
+		// Passa i fornitori sempre per show/edit (per popolare i campi esistenti)
+		// Per create, passa i fornitori solo se il documento è di tipo vendita
+		if ($type === 'create') {
+			// Per la creazione, passa i fornitori solo per ordini vendita
+			if (in_array('clienti', $this->intestatari)) {
+				$data['fornitori'] = Entity::fornitori()->get();
+			} else {
+				$data['fornitori'] = collect([]);
+			}
+		} else {
+			// Per show/edit, passa sempre i fornitori per popolare i campi esistenti
+			$data['fornitori'] = Entity::fornitori()->get();
+		}
 
 		$data['prodotti']['merci'] = Product::merci()->with(['categories', 'aliquotaIva'])->get();
 		if($this->trasporto_active === false) $data['prodotti']['servizi'] = Product::servizi()->with(['categories', 'aliquotaIva'])->get();
@@ -618,9 +736,15 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			'elementi.*.iva' => 'required_unless:elementi.*.tipo,descrizione',
 			'elementi.*.tipo' => 'required|in:descrizione,altro,merci,servizi',
 			'elementi.*.prezzo' => 'required_unless:elementi.*.tipo,descrizione|numeric',
-			'elementi.*.id' => 'required_unless:elementi.*.tipo,altro,descrizione|integer', // ID del prodotto per merci/servizi
+			'elementi.*.product_id' => 'required_unless:elementi.*.tipo,altro,descrizione|integer|exists:products,id', // ID del prodotto per merci/servizi
 			'elementi.*.nome' => 'required_unless:elementi.*.tipo,merci,servizi,descrizione|string', // Nome solo per "altro"
 		];
+
+		// Aggiungi regole per fornitore_id e riferimento solo per documenti di vendita
+		if (in_array('clienti', $this->intestatari)) {
+			$rules['elementi.*.fornitore_id'] = 'nullable|integer|exists:entities,id'; // Fornitore opzionale per merci/servizi
+			$rules['elementi.*.riferimento'] = 'nullable|string|max:255'; // Riferimento opzionale per merci/servizi
+		}
 
 		// Aggiungi regole per i dettagli se attivi
 		if ($this->dettagli_active) {
@@ -670,7 +794,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'elementi.*.descrizione.required_unless' => 'La descrizione degli elementi è obbligatoria.',
 				'elementi.*.tipo.required' => 'Il tipo degli elementi è obbligatorio.',
 				'elementi.*.prezzo.required_unless' => 'Il prezzo degli elementi è obbligatorio.',
-				'elementi.*.id.required_unless' => 'Il prodotto è obbligatorio per merci e servizi.',
+				'elementi.*.product_id.required_unless' => 'Il prodotto è obbligatorio per merci e servizi.',
 				'elementi.*.nome.required_unless' => 'Il nome è obbligatorio per elementi personalizzati.',
 				'dettagli.data_evasione.date' => 'La data di evasione deve essere una data valida.',
 				'dettagli.quantita.integer' => 'La quantità deve essere un numero intero.',

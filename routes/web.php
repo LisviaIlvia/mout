@@ -7,6 +7,16 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
+// QR Code routes - SENZA autenticazione per accesso pubblico
+Route::prefix('qr')->name('qr.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\QrCodeController::class, 'index'])->name('index');
+    Route::get('/product/{id}', [\App\Http\Controllers\QrCodeController::class, 'product'])->name('product');
+    Route::get('/order/{id}', [\App\Http\Controllers\QrCodeController::class, 'order'])->name('order');
+    Route::get('/order/{id}/view', [\App\Http\Controllers\QrCodeController::class, 'orderView'])->name('order.view');
+    Route::post('/generate', [\App\Http\Controllers\QrCodeController::class, 'generate'])->name('generate');
+    Route::get('/download', [\App\Http\Controllers\QrCodeController::class, 'download'])->name('download');
+});
+
 Route::middleware('auth')->group(function () {
 	Route::get('/dashboard', [\App\Http\Controllers\HomeController::class, 'index'])->name('dashboard');
 	

@@ -13,6 +13,7 @@ import vuetify from '@/plugins/vuetify';
 
 import LayoutGuest from '@/Layouts/LayoutGuest.vue';
 import LayoutAuth from '@/Layouts/LayoutAuth.vue';
+import LayoutPublic from '@/Layouts/LayoutPublic.vue';
 import LayoutComponent from '@/Layouts/LayoutComponent.vue';
 
 import DialogCreate from '@/Components/Dialog/DialogCreate.vue';
@@ -21,9 +22,11 @@ import DialogShow from '@/Components/Dialog/DialogShow.vue';
 import DialogDelete from '@/Components/Dialog/DialogDelete.vue';
 import DialogClone from '@/Components/Dialog/DialogClone.vue';
 import DialogMagic from '@/Components/Dialog/DialogMagic.vue';
+import DialogQrCode from '@/Components/Dialog/DialogQrCode.vue';
 
 import HeaderBox from '@/Components/HeaderBox.vue';
 import NumberDecimal from '@/Components/NumberDecimal.vue';
+import QrCodeDisplay from '@/Components/QrCodeDisplay.vue';
 
 import DocumentsHeader from '@/Components/Documents/Header/DocumentsHeader.vue';
 import DocumentsBody from '@/Components/Documents/Body/DocumentsBody.vue';
@@ -34,7 +37,16 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 createInertiaApp({
 	title: (title) => `${title} - ${appName}`,
     resolve: (name) => {
-		const defaultLayout = name.startsWith('Public/') ? LayoutGuest : LayoutAuth;
+		// Layout di default: LayoutPublic per viste QR code, LayoutGuest per altre viste pubbliche, LayoutAuth per il resto
+		let defaultLayout;
+		if (name.startsWith('QrCode/')) {
+			defaultLayout = LayoutPublic;
+		} else if (name.startsWith('Public/')) {
+			defaultLayout = LayoutGuest;
+		} else {
+			defaultLayout = LayoutAuth;
+		}
+		
 		const page = resolvePageComponent(
 			`./Pages/${name}.vue`,
 			import.meta.glob("./Pages/**/*.vue")
@@ -62,8 +74,10 @@ createInertiaApp({
 		.component('DialogDelete', DialogDelete)
 		.component('DialogClone', DialogClone)
 		.component('DialogMagic', DialogMagic)
+		.component('DialogQrCode', DialogQrCode)
 		.component('HeaderBox', HeaderBox)
 		.component('NumberDecimal', NumberDecimal)
+		.component('QrCodeDisplay', QrCodeDisplay)
 		.component('DocumentsHeader', DocumentsHeader)
 		.component('DocumentsBody', DocumentsBody)
 		.component('DocumentsFooter', DocumentsFooter)

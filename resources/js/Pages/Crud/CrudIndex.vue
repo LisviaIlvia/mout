@@ -74,6 +74,16 @@
 				<template v-if="header.key === 'actions'">
 					<div class="d-flex justify-end">
 						<v-btn 
+							v-if="item.actions.qr && item.actions.qr != false"
+							icon="fa-solid fa-qrcode fa-sm"
+							density="compact"
+							rounded="sm"
+							class="me-2"
+							color="color-qr"
+							:disabled="!item.actions.qr"
+							@click="openQrCode(item)"
+						/>
+						<v-btn 
 							v-if="item.actions.pdf && item.actions.pdf != false"
 							icon="fa-solid fa-file-pdf fa-sm"
 							density="compact"
@@ -196,6 +206,16 @@
 		@clone-record="crudTable.clone"
 		@show-notification="showNotification"
 	/>
+	<dialog-qr-code
+		ref="dialogQrCodeRef"
+		:key="dialogQrCodeKey"
+		:dialogTitle="setup.single"
+		:dialogType="setup.type"
+		:tooltip="setup.tooltipDialog"
+		:textRequest="setup.textRequestDialog"
+		:textConfirm="setup.textConfirmDialog"
+		@show-notification="showNotification"
+	></dialog-qr-code>
 </template>
 
 <style scoped>
@@ -320,7 +340,8 @@ export default {
 				dialogSetup: (this.dialogSetupChild && Object.keys(this.dialogSetupChild).length > 0) ? this.dialogSetupChild : this.$usePage().props.dialogSetup,
 				headers: this.headersChild?.length ? this.headersChild : this.$usePage().props.headers,
 				crudTable: (this.crudTableChild && Object.keys(this.crudTableChild).length > 0) ? this.crudTableChild : new this.$crudTable(this.$usePage().props),
-				components: {}
+				components: {},
+				dialogQrCodeKey: 0
 			}
 		},
 		setCrudTableDialogs() {
@@ -366,6 +387,35 @@ export default {
 		},
 		showNotification(notification) {
 			this.flashMessage(notification);
+		},
+		openQrCode(item) {
+			const currentRoute = this.$route().current();
+			let type = null;
+			
+			// Debug: log dell'item ricevuto
+			console.log('QR Code - Item ricevuto:', item);
+			
+			// Supporta solo ordini vendita e acquisto
+			if (currentRoute.includes('ordini-vendita') || currentRoute.includes('ordini-acquisto')) {
+				type = 'order';
+			} else {
+				// Per altre entità, non mostrare il pulsante QR
+				this.$nextTick(() => {
+					this.flashMessage({
+						type: 'warning',
+						message: 'QR Code disponibile solo per ordini vendita e acquisto'
+					});
+				});
+				return;
+			}
+			
+			// Debug: log dei parametri passati al dialog
+			console.log('QR Code - Parametri dialog:', { type, id: item.id, item });
+			
+			this.dialogQrCodeKey++;
+			this.$nextTick(() => {
+				this.$refs.dialogQrCodeRef.openDialog(type, item.id, item);
+			});
 		},
 		applyYearFilter() {
 			// Se activeYear è false, non applicare alcun filtro per anno

@@ -146,16 +146,18 @@
 									/>
 								</template>
 								<template v-else>
+									<!-- Aggiungo fornitori -->
 									<documents-product
 										v-model="form.elementi[index]"
 										:aliquoteIva="aliquoteIva"
-										
+										:fornitori="fornitori"
 										:color="color"
 										:readonly="readonly"
+										:isVendita="isVendita"
 										@update:modelValue="updatedElement => updateProduct(index, updatedElement)"
 									/>
 								</template>
-								<v-col class="py-0 col-remove text-right">
+								<v-col class="py-0  ml-auto col-remove text-right">
 									<v-btn
 										icon="fa-solid fa-trash fa-sm"
 										density="compact"
@@ -255,6 +257,15 @@ export default {
 		aliquoteIva: {
 			type: Object,
 			required: true
+		},
+		// Aggiungo fornitori
+		fornitori: {
+			type: Array,
+			default: () => []
+		},
+		isVendita: {
+			type: Boolean,
+			default: false
 		},
 		// spedizioni: {
 		// 	type: Array,
@@ -416,7 +427,7 @@ export default {
 					
 					nuovoElemento = {
 						tipo: tipo,
-						id: prodottoSelezionato ? prodottoSelezionato.id : null, // ID del prodotto
+						product_id: prodottoSelezionato ? prodottoSelezionato.id : null,
 						nome: prodottoSelezionato ? prodottoSelezionato.nome : '',
 						quantita: 1,
 						prezzo: prodottoSelezionato ? prodottoSelezionato.prezzo : 0.00,
@@ -427,6 +438,12 @@ export default {
 							aliquota: prodottoSelezionato ? prodottoSelezionato.aliquotaIva?.aliquota : ''
 						}
 					};
+					
+					// Aggiungi fornitore_id e riferimento solo se i fornitori sono disponibili
+					if (this.fornitori && this.fornitori.length > 0) {
+						nuovoElemento.fornitore_id = null;
+						nuovoElemento.riferimento = '';
+					}
 				}
 				this.form.elementi.push(nuovoElemento);
 				const index = this.form.elementi.length - 1;
@@ -461,7 +478,7 @@ export default {
 			
 			// Per merci e servizi, preserva il nome originale dal prodotto
 			if (elemento.tipo === 'merci' || elemento.tipo === 'servizi') {
-				const prodotto = this.prodotti[elemento.tipo].find(p => p.id === elemento.id);
+				const prodotto = this.prodotti[elemento.tipo].find(p => p.id === elemento.product_id);
 				if (prodotto) {
 					updatedElement.nome = prodotto.nome;
 				}
@@ -509,9 +526,9 @@ export default {
 				errorKeys.push(`elementi.${index}.nome`);
 			}
 			
-			// Aggiungi validazione ID per merci e servizi
+			// Aggiungi validazione product_id per merci e servizi
 			if (elemento.tipo === 'merci' || elemento.tipo === 'servizi') {
-				errorKeys.push(`elementi.${index}.id`);
+				errorKeys.push(`elementi.${index}.product_id`);
 			}
 			
 			return errorKeys.some(key => this.errors && this.errors[key]);
@@ -526,9 +543,9 @@ export default {
 				fields.push('nome');
 			}
 			
-			// Aggiungi validazione ID per merci e servizi
+			// Aggiungi validazione product_id per merci e servizi
 			if (elemento.tipo === 'merci' || elemento.tipo === 'servizi') {
-				fields.push('id');
+				fields.push('product_id');
 			}
 			
 			fields.forEach(field => {

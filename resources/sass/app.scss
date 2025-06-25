@@ -1,1 +1,53 @@
 @use 'vuetify';
+
+// Colori personalizzati per il CRM
+.color-show {
+    color: #2196F3 !important;
+}
+
+.color-create {
+    color: #4CAF50 !important;
+}
+
+.color-edit {
+    color: #FF9800 !important;
+}
+
+.color-delete {
+    color: #F44336 !important;
+}
+
+.color-export-excel {
+    color: #217346 !important;
+}
+
+.color-pdf {
+    color: #DC3545 !important;
+}
+
+.color-clone {
+    color: #E91E63 !important;
+}
+
+.color-qr {
+    color: #9C27B0 !important;
+}
+
+// Hover effects per i pulsanti
+.v-btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease;
+}
+
+// Stili per il QR code
+.qr-code-container {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-container:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transition: box-shadow 0.3s ease;
+}

@@ -15,9 +15,12 @@
 		@ready="handleReadyHeader"
 		ref="headerDocumentRef"
 	/>
+	<!-- Aggiungo fornitori -->
 	<documents-body
 		:prodotti="data.prodotti"
-		:aliquoteIva="data.aliquoteIva"		
+		:aliquoteIva="data.aliquoteIva"
+		:fornitori="data.fornitori"
+		:isVendita="isVendita"
 		:color="crudDialog.color"
 		:errors="crudDialog.errors"
 		:readonly="readonly"
@@ -68,6 +71,13 @@ export default {
 			crud: this.crud
 		}
 	},
+	computed: {
+		isVendita() {
+			// Determina se è un documento di vendita controllando gli intestatari
+			// Se contiene 'clienti', è un documento di vendita
+			return this.data.tipiIntestatari && this.data.tipiIntestatari.some(tipo => tipo.value === 'clienti');
+		}
+	},
 	mounted() {
 		this.getData();
 	},
@@ -95,7 +105,8 @@ export default {
 					contiBancari: [],
 					spedizioni: [],
 					ricorrenze: [],
-					allegati: []
+					allegati: [],
+					fornitori: []
 				}
 			};
 		},
@@ -107,6 +118,7 @@ export default {
 			this.data.contiBancari = this.dataElements.conti_bancari || [];
 			this.data.spedizioni = this.dataElements.spedizioni || [];
 			this.data.ricorrenze = this.dataElements.ricorrenze || [];
+			this.data.fornitori = this.dataElements.fornitori || [];
 			
 			// Gestisci i dati degli intestatari
 			if (this.dataElements.intestatari) {
