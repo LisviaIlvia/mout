@@ -2,9 +2,12 @@
 	<v-navigation-drawer
 		v-model="drawer"
 		class="bg-blue-grey-lighten-5"
-		permanent
-		:rail="rail"
+		:permanent="!$vuetify.display.smAndDown"
+		:temporary="$vuetify.display.smAndDown"
+		:rail="rail && !$vuetify.display.smAndDown"
 		elevation="8"
+		:width="sidebarWidth"
+		:location="$vuetify.display.smAndDown ? 'left' : 'left'"
 	>
 		<v-list density="compact" nav>
 			<v-list-item 
@@ -73,6 +76,12 @@
 		fill: #000;
 	}
 	
+	/* Responsive adjustments */
+	@media (max-width: 960px) {
+		.v-navigation-drawer {
+			width: 280px !important;
+		}
+	}
 </style>
 
 <script>
@@ -185,6 +194,14 @@ export default {
 		};
 	},
 	computed: {
+		sidebarWidth() {
+			// Su mobile, larghezza fissa di 280px
+			if (this.$vuetify.display.smAndDown) {
+				return 280;
+			}
+			// Su desktop, larghezza dinamica basata su rail
+			return this.rail ? 56 : 256;
+		},
 		filteredItems() {
 			return this.items.filter(item => {
 				if (item.link == '/dashboard') return true;
@@ -207,6 +224,10 @@ export default {
 	},
 	methods: {
 		visitLink(link) {
+			// Su mobile, chiudi il drawer dopo la navigazione
+			if (this.$vuetify.display.smAndDown) {
+				this.drawer = false;
+			}
 			this.$inertia.visit(link);
 		},
 		can(permission, roles = null) {
@@ -217,6 +238,10 @@ export default {
 				if (!hasRole) return false;
 			}
 			return hasPermission;
+		},
+		// Metodo per esporre il drawer al layout padre
+		toggleDrawer() {
+			this.drawer = !this.drawer;
 		}
 	}
 }

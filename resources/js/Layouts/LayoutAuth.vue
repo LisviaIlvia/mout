@@ -2,17 +2,32 @@
 	<v-app>
 		<Head :title="title" />
 		<v-app-bar elevation="3">
+			<!-- Bottone hamburger per mobile -->
+			<v-app-bar-nav-icon
+				v-if="$vuetify.display.smAndDown"
+				@click="toggleMobileDrawer"
+				class="d-sm-none"
+			></v-app-bar-nav-icon>
+			
 			<v-app-bar-title><img class="mt-2" height="30" src="/images/logo.png"></v-app-bar-title>
 			<account-menu 
 				:name="user.name"
 				@flash-message="flashMessage"
 			/>
 		</v-app-bar>
-		<sidebar-menu :rail="rail" :role="user.role" :permissions="user.permissions"/>
+		
+		<sidebar-menu 
+			:rail="rail" 
+			:role="user.role" 
+			:permissions="user.permissions"
+			ref="sidebarRef"
+		/>
+		
 		<v-main>
 			<v-container fluid class="px-0 py-3">
 				<v-row class="px-3 background-principale">
-					<v-col cols="auto" class="custom-border-button align-self-center">
+					<!-- Bottone toggle rail solo su desktop -->
+					<v-col cols="auto" class="custom-border-button align-self-center d-none d-md-block">
 						<v-btn
 							color="surface"
 							variant="text"
@@ -61,6 +76,13 @@
 	
 	.icon-bar .v-icon svg {
 		height: 28px;
+	}
+	
+	/* Responsive adjustments */
+	@media (max-width: 960px) {
+		.background-principale {
+			padding-left: 1rem !important;
+		}
 	}
 </style>
 
@@ -122,7 +144,16 @@ export default {
 			this.user.permissions = auth.user.permissions;
 		},
 		toggleRail() {
-			this.rail = !this.rail;
+			// Toggle rail solo su desktop
+			if (!this.$vuetify.display.smAndDown) {
+				this.rail = !this.rail;
+			}
+		},
+		toggleMobileDrawer() {
+			// Toggle drawer su mobile
+			if (this.$vuetify.display.smAndDown && this.$refs.sidebarRef) {
+				this.$refs.sidebarRef.toggleDrawer();
+			}
 		},
 		flashMessage(value) {
 			if (value.text !== "") {
