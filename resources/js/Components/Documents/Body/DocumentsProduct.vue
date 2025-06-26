@@ -222,8 +222,7 @@ export default {
 			};
 		},
 		updateElement() {
-			console.log('Emitting:', { ...this.$data });
-			this.$emit("update:modelValue", { ...this.$data });
+			this.$emit('update:modelValue', { ...this.$data });
 		},
 		formatIva(value) {
 			return Number(value).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

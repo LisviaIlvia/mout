@@ -91,7 +91,8 @@
 							class="me-2"
 							:color="crudTable.colorPdf"
 							:disabled="!item.actions.pdf"
-							@click="crudTable.openPdf(item.actions.pdf)"
+							:loading="crudTable.isPdfLoading(item.id)"
+							@click="crudTable.openPdf(item.actions.pdf, item.id)"
 						/>
 						<v-btn 
 							v-if="item.actions.clone && item.actions.clone != false"
@@ -297,7 +298,7 @@ export default {
 		}
 	},
 	async mounted() {
-		await this.loadAllComponents();
+		await this.loadAllComponent();
 		
 		this.applyYearFilter();
 		if(this.onlyIndex === false) {
@@ -377,7 +378,7 @@ export default {
 			}
 			return null;
 		},
-		async loadAllComponents() {
+		async loadAllComponent() {
 			const loadPromises = Object.keys(this.componentsToLoad).map((key) =>
 				this.loadComponent(key).then((component) => {
 					this.components[key] = component;
@@ -392,11 +393,8 @@ export default {
 			const currentRoute = this.$route().current();
 			let type = null;
 			
-			// Debug: log dell'item ricevuto
-			console.log('QR Code - Item ricevuto:', item);
-			
 			// Supporta solo ordini vendita e acquisto
-			if (currentRoute.includes('ordini-vendita') || currentRoute.includes('ordini-acquisto')) {
+			if (currentRoute.includes('ordini-vendita')) {
 				type = 'order';
 			} else {
 				// Per altre entità, non mostrare il pulsante QR
@@ -408,9 +406,6 @@ export default {
 				});
 				return;
 			}
-			
-			// Debug: log dei parametri passati al dialog
-			console.log('QR Code - Parametri dialog:', { type, id: item.id, item });
 			
 			this.dialogQrCodeKey++;
 			this.$nextTick(() => {

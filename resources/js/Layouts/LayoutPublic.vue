@@ -4,9 +4,9 @@
 		
 		<!-- Header pubblico con logo -->
 		<v-app-bar elevation="2" color="primary" dark>
-			<v-app-bar-nav-icon @click="goBack" class="me-3">
+			<!-- <v-app-bar-nav-icon @click="goBack" class="me-3">
 				<i class="fa-solid fa-arrow-left"></i>
-			</v-app-bar-nav-icon>
+			</v-app-bar-nav-icon> -->
 			
 			<v-app-bar-title>
 				<i class="fa-solid fa-building me-3"></i>
@@ -58,17 +58,17 @@ export default {
 			return page.props.title || 'Documento Pubblico';
 		}
 	},
-	methods: {
-		goBack() {
-			// Se c'è una pagina precedente nella cronologia, torna indietro
-			if (window.history.length > 1) {
-				window.history.back();
-			} else {
-				// Altrimenti vai alla home page
-				window.location.href = '/';
-			}
-		}
-	}
+	// methods: {
+	// 	goBack() {
+	// 		// Se c'è una pagina precedente nella cronologia, torna indietro
+	// 		if (window.history.length > 1) {
+	// 			window.history.back();
+	// 		} else {
+	// 			// Altrimenti vai alla home page
+	// 			window.location.href = '/';
+	// 		}
+	// 	}
+	// }
 };
 </script>
 

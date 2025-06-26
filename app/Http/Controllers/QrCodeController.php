@@ -6,19 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Document;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class QrCodeController extends Controller
 {
-    /**
-     * Mostra la pagina di generazione QR code
-     */
-    public function index()
-    {
-        return Inertia::render('QrCode/QrCodeIndex');
-    }
-
     /**
      * Genera QR code per un prodotto
      * NOTA: Per ora disabilitato, focus solo su ordini
@@ -56,12 +49,11 @@ class QrCodeController extends Controller
      */
     public function order($id)
     {
-       
         // CORREZIONE: Cerca l'ordine con l'ID specifico e il tipo corretto
         $order = Document::where('id', $id)
             ->where(function($query) {
-                $query->where('type', 'ordini-vendita')
-                      ->orWhere('type', 'ordini-acquisto');
+                $query->where('type', 'ordini-vendita');
+                    //   ->orWhere('type', 'ordini-acquisto');
             })->firstOrFail();
 
         // Crea l'URL diretto per la vista pubblica
@@ -83,8 +75,6 @@ class QrCodeController extends Controller
             'url' => $publicUrl
         ];
 
-      
-
         return response()->json([
             'qr_code' => (string) $qrCode,
             'data' => $qrData,
@@ -98,11 +88,11 @@ class QrCodeController extends Controller
      */
     public function orderView($id)
     {
-        // CORREZIONE: Cerca l'ordine con l'ID specifico e il tipo corretto
+        // Cerca l'ordine con l'ID specifico e il tipo corretto
         $order = Document::where('id', $id)
             ->where(function($query) {
-                $query->where('type', 'ordini-vendita')
-                      ->orWhere('type', 'ordini-acquisto');
+                $query->where('type', 'ordini-vendita');
+                    //   ->orWhere('type', 'ordini-acquisto');
             })->with([
                 'entity', 
                 'products.product', 
@@ -117,7 +107,7 @@ class QrCodeController extends Controller
             ->firstOrFail();
 
         // Determina il tipo di ordine per il titolo
-        $orderType = $order->type === 'ordini-vendita' ? 'Ordine di Vendita' : 'Ordine di Acquisto';
+        $orderType = 'Ordine di Vendita' ;
         $title = $orderType . ' - ' . $order->numero;
 
         // Prepara gli elementi come nel PDF

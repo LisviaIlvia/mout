@@ -58,49 +58,60 @@ class OrdineVenditaController extends AbstractDocumentController
 	 */
 	public function pdf($id)
 	{
-		$document = $this->resolveModel($id);
+		try {
+			$document = $this->resolveModel($id);
 
-		// Carica le relazioni necessarie
-		$document->load([
-			'entity',
-			'indirizzo',
-			'products.product.aliquotaIva',
-			'products.product.categories',
-			'altro.aliquotaIva',
-			'descrizioni',
-			'dettagli',
-			'media'
-		]);
+			// Carica le relazioni necessarie
+			$document->load([
+				'entity',
+				'indirizzo',
+				'products.product.aliquotaIva',
+				'products.product.categories',
+				'altro.aliquotaIva',
+				'descrizioni',
+				'dettagli',
+				'media'
+			]);
 
-		// Prepara le immagini per il PDF
-		$document->media->each(function ($media) {
-			if (str_starts_with($media->mime_type, 'image/')) {
-				$imagePath = storage_path('app/private/media/ordini-vendita/' . $media->name);
-				if (file_exists($imagePath)) {
-					$media->base64_data = base64_encode(file_get_contents($imagePath));
+			// Prepara le immagini per il PDF
+			$document->media->each(function ($media) {
+				if (str_starts_with($media->mime_type, 'image/')) {
+					$imagePath = storage_path('app/private/media/ordini-vendita/' . $media->name);
+					if (file_exists($imagePath)) {
+						$media->base64_data = base64_encode(file_get_contents($imagePath));
+					}
 				}
-			}
-		});
+			});
 
-		// Recupera e raggruppa gli elementi
-		$elementi = $this->getElementi($document);
-		$elementiPerCategoria = $elementi->groupBy(fn($item) => $item['categoria']['nome'] ?? 'Senza categoria');
+			// Recupera e raggruppa gli elementi
+			$elementi = $this->getElementi($document);
+			$elementiPerCategoria = $elementi->groupBy(fn($item) => $item['categoria']['nome'] ?? 'Senza categoria');
 
-		// Prepara i dati per il template
-		$data = [
-			'document' => $document,
-			'elementi' => $elementi,
-			'elementiPerCategoria' => $elementiPerCategoria,
-			'azienda' => \App\Models\Azienda::first(),
-			'aziendaIndirizzi' => \App\Models\AziendaIndirizzo::where('azienda_id', 1)->get(),
-		];
+			// Prepara i dati per il template
+			$data = [
+				'document' => $document,
+				'elementi' => $elementi,
+				'elementiPerCategoria' => $elementiPerCategoria,
+				'azienda' => \App\Models\Azienda::first(),
+				'aziendaIndirizzi' => \App\Models\AziendaIndirizzo::where('azienda_id', 1)->get(),
+			];
 
-		// Genera il PDF
-		$pdf = Pdf::view('pdf.ordine-vendita', $data)
-			->format('a4')
-			->margins(15, 15, 15, 15)
-			->name('ordine-vendita-' . $document->numero . '.pdf');
+			// Genera il PDF
+			$pdf = Pdf::view('pdf.ordine-vendita', $data)
+				->format('a4')
+				->margins(15, 15, 15, 15)
+				->name('ordine-vendita-' . $document->numero . '.pdf');
 
-		return $pdf->download();
+			return $pdf->download();
+			
+		} catch (\Exception $e) {
+			\Log::error('Errore nella generazione PDF ordine vendita ID ' . $id . ': ' . $e->getMessage());
+			\Log::error('Stack trace: ' . $e->getTraceAsString());
+			
+			return response()->json([
+				'error' => 'Errore nella generazione del PDF',
+				'message' => $e->getMessage()
+			], 500);
+		}
 	}
 }

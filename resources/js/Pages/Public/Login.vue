@@ -1,7 +1,7 @@
 <template>
 	<v-row>
 		<v-col cols="12" align="center">
-			<img class="mb-2" height="50" src="/images-public/logo.png">
+			<img class="mb-2" height="50" src="/images/logo.png">
 		</v-col>
 	</v-row>
 	<v-card class="pa-5">

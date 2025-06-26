@@ -1,82 +1,68 @@
 <template>
 	<v-dialog
 		v-model="dialog"
-		:max-width="dialogSetup.width || 500"
-		:fullscreen="dialogSetup.fullscreen || false"
-		:scrim="dialogSetup.scrim !== undefined ? dialogSetup.scrim : true"
+		:max-width="dialogSetup.width"
+		:fullscreen="dialogSetup.fullscreen"
+		:scrim="dialogSetup.scrim"
 		persistent
+		transition="dialog-transition"
 	>
 		<v-card>
-			<v-toolbar
-				:color="color"
-				dark
-			>
-				<v-toolbar-title>
-					<i class="fa-solid fa-qrcode me-2"></i>
+			<v-card-title class="pa-6 pb-0">
+				<div class="d-flex align-center">
+					<v-icon
+						:color="color"
+						class="me-3"
+						size="24"
+					>
+						<i class="fa-solid fa-qrcode"></i>
+					</v-icon>
 					{{ dialogTitle }}
-				</v-toolbar-title>
-				<v-spacer></v-spacer>
-				<v-btn
-					icon
-					@click="closeDialog"
-				>
-					<i class="fa-solid fa-times"></i>
-				</v-btn>
-			</v-toolbar>
+				</div>
+			</v-card-title>
 
 			<v-card-text class="pa-6">
 				<div v-if="loading" class="text-center pa-8">
 					<v-progress-circular
 						indeterminate
+						color="primary"
 						size="64"
-						:color="color"
 					></v-progress-circular>
-					<p class="mt-4 text-body-1">Generazione QR Code in corso...</p>
+					<p class="mt-4 text-grey">Generazione QR Code in corso...</p>
 				</div>
 
-				<div v-else-if="qrData && qrData.data && qrData.data.qr_code" class="text-center">
-					<!-- QR Code Display -->
-					<div class="qr-code-container mb-6">
-						<div 
-							v-html="qrData.data.qr_code" 
-							class="qr-code-svg"
-							style="max-width: 300px; margin: 0 auto;"
-						></div>
+				<div v-else-if="qrData && qrData.data" class="qr-code-container">
+					<div class="text-center mb-4">
+						<h4 class="text-h6 mb-2">{{ qrData.data.code || 'QR Code' }}</h4>
+						<p class="text-caption text-grey">{{ qrData.data.name || '' }}</p>
 					</div>
 
-					<!-- Dettagli -->
-					<v-card variant="outlined" class="pa-4 mb-4">
-						<h4 class="text-h6 mb-3">Dettagli</h4>
-						<v-list density="compact">
-							<v-list-item>
-								<template v-slot:prepend>
-									<i class="fa-solid fa-barcode text-grey"></i>
-								</template>
-								<v-list-item-title>Codice: {{ qrData.data.data.code }}</v-list-item-title>
-							</v-list-item>
-							
-							<v-list-item>
-								<template v-slot:prepend>
-									<i class="fa-solid fa-tag text-grey"></i>
-								</template>
-								<v-list-item-title>Nome: {{ qrData.data.data.name }}</v-list-item-title>
-							</v-list-item>
-							
-							<v-list-item>
-								<template v-slot:prepend>
-									<i class="fa-solid fa-link text-grey"></i>
-								</template>
-								<v-list-item-title>
-									<a :href="qrData.data.data.url" class="text-decoration-none">
-										{{ qrData.data.data.url }}
-									</a>
-								</v-list-item-title>
-							</v-list-item>
-						</v-list>
-					</v-card>
+					<div class="text-center mb-6">
+						<div class="qr-code-svg" v-html="qrData.qr_code"></div>
+					</div>
 
-					<!-- Azioni Download - Multipli formati -->
-					<v-card variant="outlined" class="pa-4">
+					<v-divider class="mb-4"></v-divider>
+
+					<!-- URL cliccabile -->
+					<div class="mb-4">
+						<h4 class="text-h6 mb-3">Link Pubblico</h4>
+						<v-card variant="outlined" class="pa-3">
+							<a 
+								:href="qrData.data.url" 
+								target="_blank" 
+								class="text-decoration-none text-primary"
+								style="word-break: break-all;"
+							>
+								<i class="fa-solid fa-external-link-alt me-2"></i>
+								{{ qrData.data.url }}
+							</a>
+							
+						</v-card>
+					</div>
+
+					<v-divider class="mb-4"></v-divider>
+
+					<div class="mb-4">
 						<h4 class="text-h6 mb-3">Scarica QR Code</h4>
 						
 						<v-row>
@@ -85,14 +71,14 @@
 									color="info"
 									variant="outlined"
 									@click="downloadQr('svg')"
-									:loading="downloading"
+									:loading="isQrCodeLoading('svg')"
 									block
 									size="small"
 								>
 									<i class="fa-solid fa-vector-square me-1"></i>
 									SVG
 								</v-btn>
-								<p class="text-caption text-grey mt-1">Vettoriale</p>
+								
 							</v-col>
 							
 							<v-col cols="4">
@@ -100,14 +86,14 @@
 									color="success"
 									variant="outlined"
 									@click="downloadQr('png')"
-									:loading="downloading"
+									:loading="isQrCodeLoading('png')"
 									block
 									size="small"
 								>
 									<i class="fa-solid fa-image me-1"></i>
 									PNG
 								</v-btn>
-								<p class="text-caption text-grey mt-1">Alta qualità</p>
+							
 							</v-col>
 							
 							<v-col cols="4">
@@ -115,22 +101,21 @@
 									color="warning"
 									variant="outlined"
 									@click="downloadQr('eps')"
-									:loading="downloading"
+									:loading="isQrCodeLoading('eps')"
 									block
 									size="small"
 								>
 									<i class="fa-solid fa-file-code me-1"></i>
 									EPS
 								</v-btn>
-								<p class="text-caption text-grey mt-1">PostScript</p>
 							</v-col>
 						</v-row>
 						
-						<p class="text-caption text-grey mt-3">
+						<!-- <p class="text-caption text-grey mt-3">
 							<i class="fa-solid fa-info-circle me-1"></i>
 							Il QR code è scannerizzabile e porta alla vista pubblica dell'ordine
-						</p>
-					</v-card>
+						</p> -->
+					</div>
 				</div>
 
 				<div v-else-if="qrData" class="text-grey">QR code non disponibile</div>
@@ -205,23 +190,24 @@ export default {
 			axiosService: new axiosService()
 		};
 	},
+	computed: {
+		// Accesso alle proprietà globali di Vue
+		crudTable() {
+			return this.$crudTable;
+		},
+		downloadService() {
+			return this.$downloadService;
+		}
+	},
 	methods: {
 		openDialog(type, id, item) {
-			// Debug: log dei parametri ricevuti
-			console.log('QR Code - openDialog chiamato con:', { type, id, item });
 			
 			this.type = type; 			//'order' o 'product'	
 			this.item = item; 			//oggetto completo dell'ordine della tabella
 			this.qrData = null; 		//reset dati precedenti
 			this.error = null;			//reset errori precedenti
 			this.dialog = false;		//reset dialog precedente
-			
-			// Debug: log dello stato dopo il reset
-			console.log('QR Code - Stato dopo reset:', { 
-				type: this.type, 
-				itemId: this.item?.id, 
-				item: this.item 
-			});
+
 			
 			this.$nextTick(() => {
 				this.dialog = true;		  //apre dialog
@@ -234,34 +220,18 @@ export default {
 			this.loading = true;
 			this.error = null;
 
-			// Debug: log dell'ID e tipo
-			console.log('QR Code - Generazione per:', { type: this.type, id: id });
-
 			try {
 				await this.axiosService.get({
 					url: `/qr/${this.type}/${id}?_=${Date.now()}`,
 					success: (data) => {
-						// Debug: log dei dati ricevuti
-						console.log('QR Code - Dati ricevuti:', data);
-						console.log('QR Code - Dati order nella risposta:', data.data?.order);
-						console.log('QR Code - ID order nella risposta:', data.data?.order?.id);
-						this.qrData = data;
+						this.qrData = data.data;
 						
-						// Debug: log dello stato finale
-						console.log('QR Code - Stato finale dopo assegnazione:', {
-							qrDataOrderId: this.qrData?.data?.order?.id,
-							qrDataDataId: this.qrData?.data?.data?.id,
-							itemId: this.item?.id
-						});
 					},
 					error: (error) => {
-						// Debug: log dell'errore
-						console.error('QR Code - Errore:', error);
 						this.error = error.message || 'Errore nella generazione del QR code';
 					}
 				});
 			} catch (error) {
-				console.error('QR Code - Errore catch:', error);
 				this.error = 'Errore nella generazione del QR code';
 			} finally {
 				this.loading = false;
@@ -270,36 +240,50 @@ export default {
 
 		async downloadQr(format) {
 			if (!this.qrData) return;
-			this.downloading = true;
-			try {
-				const params = new URLSearchParams({
-					type: this.qrData.data.data.type,
-					id: this.qrData.data.data.id,
-					format: format
-				});
-				window.open(`/qr/download?${params.toString()}`, '_blank');
-			} catch (error) {
-				this.error = 'Errore nel download del QR code';
-			} finally {
-				this.downloading = false;
+			
+			const params = new URLSearchParams({
+				type: this.qrData.data.type,
+				id: this.qrData.data.id,
+				format: format
+			});
+			
+			const url = `/qr/download?${params.toString()}`;
+			
+			// Usa il DownloadService se disponibile
+			if (this.downloadService) {
+				this.downloadService.downloadQrCode(url, this.qrData.data.id, format);
+			} else if (this.crudTable) {
+				// Fallback su crudTable se disponibile
+				this.crudTable.openQrCode(url, this.qrData.data.id, format);
+			} else {
+				// Fallback finale
+				this.downloading = true;
+				try {
+					window.open(url, '_blank');
+				} catch (error) {
+					console.error('Errore QR Code:', error);
+				} finally {
+					this.downloading = false;
+				}
 			}
 		},
 
+		isQrCodeLoading(format) {
+			// Controlla lo stato di caricamento usando crudTable o downloadService
+			if (this.crudTable && this.crudTable.isQrCodeLoading) {
+				return this.crudTable.isQrCodeLoading(this.qrData?.data?.id, format);
+			}
+			if (this.downloadService && this.downloadService.isLoading) {
+				return this.downloadService.isLoading('qrCode', this.qrData?.data?.id, format);
+			}
+			return this.downloading;
+		},
+
 		retry() {
-			// Debug: log dello stato corrente
-			console.log('QR Code - Retry chiamato con stato:', { 
-				type: this.type, 
-				itemId: this.item?.id, 
-				item: this.item 
-			});
-			
 			if (this.item && this.type) {
 				// Usa l'ID dell'item corrente invece di this.item.id che potrebbe essere stale
 				const currentId = this.item.id;
-				console.log('QR Code - Retry con ID:', currentId);
 				this.generateQrCode(currentId);
-			} else {
-				console.error('QR Code - Retry fallito: item o type mancanti');
 			}
 		},
 
@@ -336,4 +320,4 @@ export default {
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 	transition: box-shadow 0.3s ease;
 }
-</style> 
+</style>

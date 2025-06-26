@@ -128,10 +128,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		// if(isset($validatedData['conto_bancario_id'])) {
 		// 	if($validatedData['conto_bancario_id'] == '0' || $validatedData['conto_bancario_id'] == null) unset($validatedData['conto_bancario_id']);
 		// }
-
 	}
-
-// aggiungo fornitore_id a DocumentProduct
 
 	protected function afterStore(&$object, $validatedData)
 	{
@@ -170,13 +167,9 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 		if (!empty($validatedData['elementi'])) {
 			foreach ($validatedData['elementi'] as $key => $element) {
-// Modificare il salvataggio per includere il fornitore_id
 				switch($element['tipo']) {
 					case 'merci':
 					case 'servizi':
-						// Log temporaneo per debug
-						\Log::info("Salvando elemento {$key}:", ['element' => $element]);
-						
 						// CORREZIONE: Usa product_id invece di id per i prodotti
 						$productId = $element['product_id'] ?? null;
 						
@@ -188,7 +181,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 						
 						// Verifica che il prodotto esista
 						if (!$productId) {
-							\Log::error("Prodotto non trovato per elemento {$key}: " . json_encode($element));
 							continue 2; // Salta questo elemento e continua il ciclo foreach esterno
 						}
 						
@@ -281,23 +273,14 @@ abstract class AbstractDocumentController extends AbstractCrudController
                 ]);
             }
         }
-
 	}
-
-// aggiungo fornitore_id a DocumentProduct
 
 	protected function beforeUpdate(&$validatedData)
 	{
-		// Debug: log dei dati ricevuti
-		\Log::info("beforeUpdate chiamato");
-		\Log::info("validatedData keys: " . implode(', ', array_keys($validatedData)));
-		
 		$validatedData['type'] =  $this->pattern;
 
 		// Preprocess boolean fields in dettagli if they exist
 		if ($this->dettagli_active && isset($validatedData['dettagli'])) {
-			\Log::info("Processando dettagli: " . json_encode($validatedData['dettagli']));
-			
 			$booleanFields = ['ricamo_logo', 'pendenza', 'fissaggio_pavimento', 'montaggio'];
 			foreach ($booleanFields as $field) {
 				if (isset($validatedData['dettagli'][$field])) {
@@ -328,18 +311,10 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		// if(isset($validatedData['conto_bancario_id'])) {
 		// 	if($validatedData['conto_bancario_id'] == '0' || $validatedData['conto_bancario_id'] == null) unset($validatedData['conto_bancario_id']);
 		// }
-
-		\Log::info("beforeUpdate completato");
 	}
-
-// aggiungo fornitore_id a DocumentProduct
 
 	protected function afterUpdate(&$object, $validatedData)
 	{
-		// Debug: log dei dati ricevuti
-		\Log::info("afterUpdate chiamato per documento ID: " . $object->id);
-		\Log::info("validatedData keys: " . implode(', ', array_keys($validatedData)));
-		
 		if (isset($validatedData['indirizzo'])) {
 			$object->indirizzo()->delete();
 			DocumentIndirizzo::create(array_merge(['document_id' => $object->id], $validatedData['indirizzo']));
@@ -366,7 +341,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				$object->media()->create([
 					'name' => $filename,
 					'extension' => $file->getClientOriginalExtension(),
-					'mime_type' => $file->getClientMimeType(),
+					'mime_type' => $file->getMimeType(),
 					'url' => '/media/' . $pattern_name . '/' . $filename,
 					'relationable_id' => $object->id,
 					'relationable_type' => get_class($object)
@@ -375,12 +350,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		}
 
 		if (isset($validatedData['elementi'])) {
-			// Debug: log degli elementi
-			\Log::info("Elementi da processare: " . json_encode($validatedData['elementi']));
-			\Log::info("Tipo di elementi: " . gettype($validatedData['elementi']));
-			\Log::info("Elementi è array: " . (is_array($validatedData['elementi']) ? 'SI' : 'NO'));
-			\Log::info("Elementi è empty: " . (empty($validatedData['elementi']) ? 'SI' : 'NO'));
-			
 			// Controlla che elementi sia un array e non sia null prima di eliminare
 			if ($validatedData['elementi'] !== null && is_array($validatedData['elementi']) && !empty($validatedData['elementi'])) {
 				$object->products()->delete();
@@ -388,9 +357,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				$object->descrizioni()->delete();
 
 				foreach ($validatedData['elementi'] as $key => $element) {
-					// Debug: log di ogni elemento
-					\Log::info("Processando elemento {$key}:", ['element' => $element]);
-					
 					switch($element['tipo']) {
 						case 'merci':
 						case 'servizi':
@@ -403,11 +369,8 @@ abstract class AbstractDocumentController extends AbstractCrudController
 								$productId = $product ? $product->id : null;
 							}
 							
-							\Log::info("Product ID per elemento {$key}: " . $productId);
-							
 							// Verifica che il prodotto esista
 							if (!$productId) {
-								\Log::error("Prodotto non trovato per elemento {$key}: " . json_encode($element));
 								continue 2; // Salta questo elemento e continua il ciclo foreach esterno
 							}
 							
@@ -427,7 +390,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 								$productData['riferimento'] = $element['riferimento'] ?? null;
 							}
 							
-							\Log::info("Creando DocumentProduct con dati:", $productData);
 							DocumentProduct::create($productData);
 							break;
 						case 'altro':
@@ -439,7 +401,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 								// Fallback: cerca l'unità di misura nell'elemento stesso
 								$unitaMisura = $element['unita_misura'] ?? null;
 							}
-							\Log::info("Unità misura per elemento {$key}: " . $unitaMisura);
 							
 							DocumentAltro::create([
 								'document_id' => $object->id,
@@ -459,12 +420,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							]);
 							break;
 					}
-				}
-			} else {
-				if ($validatedData['elementi'] === null) {
-					\Log::warning("Elementi è NULL per documento ID: " . $object->id . ". Questo indica un problema nel frontend.");
-				} else {
-					\Log::warning("Elementi non validi o vuoti per documento ID: " . $object->id . ". Elementi: " . json_encode($validatedData['elementi']));
 				}
 			}
 		}
@@ -489,8 +444,6 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				]);
 			}
 		}
-		
-		\Log::info("afterUpdate completato per documento ID: " . $object->id);
 	}
 
 	protected function setJsonData(string $type, Model|Collection $object)

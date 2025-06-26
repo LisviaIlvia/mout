@@ -1,3 +1,5 @@
+import DownloadService from './downloadService';
+
 class crudTable {
 
 	constructor(props) {
@@ -28,6 +30,9 @@ class crudTable {
 		this.dialogEdit = null;
 		this.dialogDelete = null;
 		this.dialogClone = null;
+		
+		// Service per i download
+		this.downloadService = new DownloadService();
 	}
 
 	setDialogs(dialogs) {
@@ -74,7 +79,7 @@ class crudTable {
 			Object.assign(this.records[index], updatedRecord);
 			Object.assign(this.originalRecords[index], updatedRecord);
 
-			if(fieldName != null && value != null && updatedRecord[fieldName] === true) {
+			if (fieldName != null && value != null && updatedRecord[fieldName] === true) {
 				this.records.forEach((record, idx) => {
 					if (idx !== index) {
 						record[fieldName] = value;
@@ -154,8 +159,12 @@ class crudTable {
 		this.loading.recordId = null;
 	}
 
-	openPdf(urlOpen) {
-		window.open(urlOpen, '_blank');
+	openPdf(urlOpen, recordId) {
+		this.downloadService.downloadPdf(urlOpen, recordId);
+	}
+
+	openQrCode(urlOpen, recordId, format) {
+		this.downloadService.downloadQrCode(urlOpen, recordId, format);
 	}
 
 	openDialogShow(recordId, urlOpen) {
@@ -181,6 +190,15 @@ class crudTable {
 	openDialogDelete(recordId, data, urlForm) {
 		this.startLoadingDelete(recordId);
 		this.dialogDelete.openDialog(data, urlForm);
+	}
+
+	// Metodi per accedere al loading state del download service
+	isPdfLoading(recordId) {
+		return this.downloadService.isLoading('pdf', recordId);
+	}
+
+	isQrCodeLoading(recordId, format) {
+		return this.downloadService.isLoading('qrCode', recordId, format);
 	}
 }
 

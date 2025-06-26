@@ -3,6 +3,7 @@ import apiDunpService from '@/lib/apiDunpService';
 import crudTable from '@/lib/crudTable';
 import crudDialog from '@/lib/crudDialog';
 import tooltipDialog from '@/lib/tooltipDialog';
+import DownloadService from '@/lib/downloadService';
 import { createApp, h } from 'vue';
 import { createInertiaApp, Link, usePage } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -89,7 +90,18 @@ createInertiaApp({
 		app.config.globalProperties.$crudDialog = crudDialog;
 		app.config.globalProperties.$tooltipDialog = tooltipDialog;
 		app.config.globalProperties.$usePage = usePage;
-		app.config.globalProperties.$route = route
+		app.config.globalProperties.$route = route;
+		app.config.globalProperties.$downloadService = new DownloadService();
+		
+		// Rendi crudTable disponibile globalmente
+		window.crudTable = crudTable;
+		window.downloadService = new DownloadService();
+		window.flashMessage = (notification) => {
+			// Funzione per mostrare notifiche globali
+			if (app.config.globalProperties.$flashMessage) {
+				app.config.globalProperties.$flashMessage(notification);
+			}
+		};
 		app.mount(el);
 	}
 });

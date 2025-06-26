@@ -349,9 +349,9 @@ abstract class AbstractCrudController extends Controller
 				return $route;
 			})->toArray();
 
-			// Aggiungi azione QR code solo per ordini vendita e acquisto
+			// Aggiungi azione QR code solo per ordini vendita
 			// Il pattern indica il tipo di entità (es: 'ordini-vendita', 'ordini-acquisto')
-			if (in_array($pattern, ['ordini-vendita', 'ordini-acquisto'])) {
+			if (in_array($pattern, ['ordini-vendita'])) {
 				$actions['qr'] = true;
 			} else {
 				$actions['qr'] = false; // Nasconde il pulsante per altre entità
@@ -477,29 +477,13 @@ abstract class AbstractCrudController extends Controller
 	**/
 	private function validationData(string $type, Model $object = null) 
 	{
-		// Debug: log del tipo di operazione
-		\Log::info("validationData chiamato per tipo: " . $type);
-		
 		$object = $object ?? new $this->model;
         $validationData = $this->setValidation($object);
 
         $additionalRules = $type === 'store' ? $validationData['store'] ?? [] : $validationData['update'] ?? [];
         $rules = array_merge($validationData['rules'] ?? [], $additionalRules);
 
-        // Debug: log delle regole di validazione
-        \Log::info("Regole di validazione per {$type}:", $rules);
-
-        try {
-            $validatedData = request()->validate($rules, $validationData['messages'] ?? []);
-            \Log::info("Validazione completata per {$type}");
-            return $validatedData;
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error("Errore di validazione per {$type}:", ['errors' => $e->errors()]);
-            throw $e;
-        } catch (\Exception $e) {
-            \Log::error("Errore generico in validationData per {$type}:", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            throw $e;
-        }
+        return request()->validate($rules, $validationData['messages'] ?? []);
 	}
 
 	/**

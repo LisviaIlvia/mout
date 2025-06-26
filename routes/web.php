@@ -9,7 +9,6 @@ Route::get('/', function () {
 
 // QR Code routes - SENZA autenticazione per accesso pubblico
 Route::prefix('qr')->name('qr.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\QrCodeController::class, 'index'])->name('index');
     Route::get('/product/{id}', [\App\Http\Controllers\QrCodeController::class, 'product'])->name('product');
     Route::get('/order/{id}', [\App\Http\Controllers\QrCodeController::class, 'order'])->name('order');
     Route::get('/order/{id}/view', [\App\Http\Controllers\QrCodeController::class, 'orderView'])->name('order.view');
