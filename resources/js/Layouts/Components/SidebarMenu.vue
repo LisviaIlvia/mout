@@ -222,6 +222,16 @@ export default {
 			});
 		}
 	},
+	mounted() {
+		// Inizializza il drawer in base alla dimensione dello schermo
+		this.drawer = !this.$vuetify.display.smAndDown;
+	},
+	watch: {
+		'$vuetify.display.smAndDown'(newValue) {
+			// Su mobile, chiudi il drawer; su desktop, aprilo
+			this.drawer = !newValue;
+		}
+	},
 	methods: {
 		visitLink(link) {
 			// Su mobile, chiudi il drawer dopo la navigazione

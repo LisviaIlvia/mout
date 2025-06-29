@@ -44,12 +44,12 @@ class QrCodeController extends Controller
     }
 
     /**
-     * Genera QR code per un ordine (vendita o acquisto)
+     * Genera QR code per un ordine (vendita)
      * Il QR code conterrà direttamente l'URL della vista pubblica
      */
     public function order($id)
     {
-        // CORREZIONE: Cerca l'ordine con l'ID specifico e il tipo corretto
+        // Cerca l'ordine con l'ID specifico e il tipo corretto
         $order = Document::where('id', $id)
             ->where(function($query) {
                 $query->where('type', 'ordini-vendita');

@@ -43,7 +43,7 @@
 						<v-icon color="surface" :icon="icon"></v-icon>
 					</v-col>
 				</v-row>
-				<v-row class="ma-0 px-8 py-10">
+				<v-row class="ma-0 px-8 py-10 px-mobile">
 					<v-col cols="12" class="pa-0 ma-0">
 						<slot />
 					</v-col>
@@ -82,6 +82,11 @@
 	@media (max-width: 960px) {
 		.background-principale {
 			padding-left: 1rem !important;
+		}
+		
+		.px-mobile {
+			padding-left: 1rem !important;
+			padding-right: 1rem !important;
 		}
 	}
 </style>
