@@ -10,6 +10,7 @@
 			></v-app-bar-nav-icon>
 			
 			<v-app-bar-title><img class="mt-2" height="30" src="/images/logo.png"></v-app-bar-title>
+			
 			<account-menu 
 				:name="user.name"
 				@flash-message="flashMessage"
