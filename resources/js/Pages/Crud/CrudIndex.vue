@@ -47,6 +47,17 @@
 						:disabled="!crudTable.urlExportExcel"
 						@click="crudTable.exportExcel(this.setup.yearStore.selectedYear)"
 					/>
+					<v-btn
+						v-if="crudTable.urlImportCsv !== null"
+						variant="flat"
+						density="comfortable"
+						icon="fa-solid fa-file-csv"
+						rounded="sm"
+						class="mr-2"
+						color="success"
+						:disabled="!crudTable.urlImportCsv"
+						@click="openCsvImport"
+					/>
 					<v-btn 
 						v-if="crudTable.urlCreate !== null"
 						variant="flat"
@@ -83,6 +94,7 @@
 							:disabled="!item.actions.qr"
 							@click="openQrCode(item)"
 						/>
+						<!-- Icona PDF -->
 						<v-btn 
 							v-if="item.actions.pdf && item.actions.pdf != false"
 							icon="fa-solid fa-file-pdf fa-sm"
@@ -212,11 +224,27 @@
 		:key="dialogQrCodeKey"
 		:dialogTitle="setup.single"
 		:dialogType="setup.type"
-		:tooltip="setup.tooltipDialog"
-		:textRequest="setup.textRequestDialog"
-		:textConfirm="setup.textConfirmDialog"
+		:dialogSetup="dialogSetup.qr"
+		:crudDialog="crudDialog"
+		@dialog-qr-opened="stopLoadingQr"
 		@show-notification="showNotification"
-	></dialog-qr-code>
+	>
+		<template #content>
+			<qr-code-content
+				v-if="qrType && qrId"
+				:type="qrType"
+				:id="qrId"
+			></qr-code-content>
+		</template>
+	</dialog-qr-code>
+	
+	<!-- Componente per importazione CSV -->
+	<csv-import
+		ref="csvImportRef"
+		:title="setup.single"
+		:import-url="crudTable.urlImportCsv"
+		@import-success="onImportSuccess"
+	></csv-import>
 </template>
 
 <style scoped>
@@ -237,9 +265,15 @@
 <script>
 import { useYearStore } from '@/store/yearStore';
 import { markRaw } from 'vue';
+import CsvImport from '../../Components/CsvImport.vue';
+import QrCodeContent from '../../Components/QrCodeContent.vue';
 
 export default {
 	name: 'crudIndex',
+	components: {
+		CsvImport,
+		QrCodeContent
+	},
 	inject: ['flashMessage'],
 	props: {
 		titleTable: {
@@ -338,12 +372,31 @@ export default {
 					activeYear: this.options.activeYear ? this.options.activeYear : this.$usePage().props.activeYear,
 					recordsYear: this.$usePage().props.recordsYear || false
 				},
-				dialogSetup: (this.dialogSetupChild && Object.keys(this.dialogSetupChild).length > 0) ? this.dialogSetupChild : this.$usePage().props.dialogSetup,
+				dialogSetup: this.getDialogSetup(),
 				headers: this.headersChild?.length ? this.headersChild : this.$usePage().props.headers,
 				crudTable: (this.crudTableChild && Object.keys(this.crudTableChild).length > 0) ? this.crudTableChild : new this.$crudTable(this.$usePage().props),
+				crudDialog: new this.$crudDialog(),
 				components: {},
-				dialogQrCodeKey: 0
+				dialogQrCodeKey: 0,
+				qrType: null,
+				qrId: null
 			}
+		},
+		getDialogSetup() {
+			const baseSetup = (this.dialogSetupChild && Object.keys(this.dialogSetupChild).length > 0) 
+				? this.dialogSetupChild 
+				: this.$usePage().props.dialogSetup;
+			
+			// Aggiungi configurazione QR di default se non presente
+			if (!baseSetup.qr) {
+				baseSetup.qr = {
+					width: '600px',
+					fullscreen: false,
+					scrim: true
+				};
+			}
+			
+			return baseSetup;
 		},
 		setCrudTableDialogs() {
 			const refsMap = {
@@ -393,24 +446,36 @@ export default {
 			const currentRoute = this.$route().current();
 			let type = null;
 			
-			// Supporta solo ordini vendita e acquisto
+			// Supporta ordini vendita, acquisto e merci
 			if (currentRoute.includes('ordini-vendita')) {
 				type = 'order';
+			}  else if (currentRoute.includes('merci')) {
+				type = 'product';
 			} else {
 				// Per altre entità, non mostrare il pulsante QR
 				this.$nextTick(() => {
 					this.flashMessage({
 						type: 'warning',
-						message: 'QR Code disponibile solo per ordini vendita e acquisto'
+						message: 'QR Code disponibile solo per ordini vendita e merci'
 					});
 				});
 				return;
 			}
 			
+			// Salva i dati per il contenuto
+			this.qrType = type;
+			this.qrId = item.id;
+			
 			this.dialogQrCodeKey++;
 			this.$nextTick(() => {
-				this.$refs.dialogQrCodeRef.openDialog(type, item.id, item);
+				this.$refs.dialogQrCodeRef.openDialogQrCode(type, item.id, item);
 			});
+		},
+		stopLoadingQr() {
+			// Metodo per fermare il loading del QR code
+			if (this.crudTable && this.crudTable.stopLoadingQr) {
+				this.crudTable.stopLoadingQr();
+			}
 		},
 		applyYearFilter() {
 			// Se activeYear è false, non applicare alcun filtro per anno
@@ -453,6 +518,29 @@ export default {
 					return recordYear === year;
 				});
 			}
+		},
+		
+		/**
+		 * Apre il dialog di importazione CSV
+		 */
+		openCsvImport() {
+			if (this.$refs.csvImportRef) {
+				this.$refs.csvImportRef.openDialog();
+			}
+		},
+		
+		/**
+		 * Gestisce il successo dell'importazione CSV
+		 */
+		onImportSuccess(response) {
+			// Ricarica i dati della tabella
+			this.crudTable.load();
+			
+			// Mostra notifica di successo
+			this.showNotification({
+				type: 'success',
+				text: response.message
+			});
 		}
 	},
 	watch: {

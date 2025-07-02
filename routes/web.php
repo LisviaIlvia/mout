@@ -10,6 +10,7 @@ Route::get('/', function () {
 // QR Code routes - SENZA autenticazione per accesso pubblico
 Route::prefix('qr')->name('qr.')->group(function () {
     Route::get('/product/{id}', [\App\Http\Controllers\QrCodeController::class, 'product'])->name('product');
+    Route::get('/product/{id}/view', [\App\Http\Controllers\QrCodeController::class, 'productView'])->name('product.view');
     Route::get('/order/{id}', [\App\Http\Controllers\QrCodeController::class, 'order'])->name('order');
     Route::get('/order/{id}/view', [\App\Http\Controllers\QrCodeController::class, 'orderView'])->name('order.view');
     Route::post('/generate', [\App\Http\Controllers\QrCodeController::class, 'generate'])->name('generate');
@@ -81,7 +82,13 @@ Route::middleware('auth')->group(function () {
 	//CrudRoutePermission::resource('ddt-entrata', 'ddt_entrata', App\Http\Controllers\DdtEntrataController::class,['export' => true]);
 	
 	CrudRoutePermission::resource('ordini-vendita', 'ordine_vendita', App\Http\Controllers\OrdineVenditaController::class,['export' => true, 'pdf' => true, 'magic' => true]);
-	CrudRoutePermission::resource('ordini-acquisto', 'ordine_acquisto', App\Http\Controllers\OrdineAcquistoController::class,['export' => true]);
+	
+	// Rotta per importazione CSV ordini vendita
+	Route::group(['middleware' => ['permission:ordine_vendita.create']], function () {
+		Route::post('/ordini-vendita/import', [App\Http\Controllers\OrdineVenditaController::class, 'import'])->name('ordini-vendita.import');
+	});
+	
+	CrudRoutePermission::resource('ordini-acquisto', 'ordine_acquisto', App\Http\Controllers\OrdineAcquistoController::class,['export' => true, 'pdf' => true]);
 	
 	//CrudRoutePermission::resource('fatture-proforma', 'fattura_proforma', App\Http\Controllers\FatturaProformaController::class,['export' => true, 'pdf' => true, 'magic' => true]);
 	//CrudRoutePermission::resource('fatture-vendita', 'fattura_vendita', App\Http\Controllers\FatturaVenditaController::class,['export' => true, 'pdf' => true, 'magic' => true]);

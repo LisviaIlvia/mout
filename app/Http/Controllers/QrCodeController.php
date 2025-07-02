@@ -13,33 +13,84 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 class QrCodeController extends Controller
 {
     /**
-     * Genera QR code per un prodotto
-     * NOTA: Per ora disabilitato, focus solo su ordini
+     * Genera QR code per un prodotto/merce
      */
     public function product($id)
     {
-        // Per ora disabilitato - focus solo su ordini
-        abort(404, 'Funzionalità prodotto temporaneamente disabilitata');
-        
         $product = Product::findOrFail($id);
+        
+        // Crea l'URL diretto per la vista pubblica del prodotto
+        $publicUrl = route('qr.product.view', $product->id);
         
         $qrData = [
             'type' => 'product',
             'id' => $product->id,
-            'code' => $product->numero,
+            'code' => $product->codice,
             'name' => $product->nome,
-            'url' => route('qr.product', $product->id)
+            'url' => $publicUrl
         ];
 
         $qrCode = (string) QrCode::format('svg')
             ->size(300)
             ->margin(10)
-            ->generate(json_encode($qrData));
+            ->generate($publicUrl); // URL diretto, non JSON
 
         return response()->json([
             'qr_code' => (string) $qrCode,
             'data' => $qrData,
             'product' => $product
+        ]);
+    }
+
+    /**
+     * Vista pubblica del prodotto - accessibile senza autenticazione
+     * Questa è la pagina che viene aperta quando si scansiona il QR code del prodotto
+     */
+    public function productView($id)
+    {
+        $product = Product::with([
+            'aliquotaIva',
+            'categories',
+            'documents.entity',
+            'documents.products.product',
+            'documents.altro',
+            'documents.descrizioni'
+        ])->findOrFail($id);
+
+        // Prepara i dati del prodotto per la vista pubblica
+        $productData = [
+            'id' => $product->id,
+            'codice' => $product->codice,
+            'nome' => $product->nome,
+            'descrizione' => $product->descrizione,
+            'unita_misura' => $product->unita_misura,
+            'prezzo' => $product->prezzo,
+            'aliquota_iva' => $product->aliquotaIva,
+            'categorie' => $product->categories,
+            'giacenza_iniziale' => $product->giacenza_iniziale,
+            'type' => $product->type
+        ];
+
+        // Prepara i documenti associati al prodotto
+        $documents = $product->documents->groupBy('type')->map(function ($docs, $type) {
+            return $docs->map(function ($doc) {
+                return [
+                    'id' => $doc->id,
+                    'numero' => $doc->numero,
+                    'data' => $doc->data,
+                    'stato' => $doc->stato,
+                    'entity' => $doc->entity,
+                    'type' => $doc->type
+                ];
+            });
+        });
+
+        $title = 'Prodotto - ' . $product->nome;
+
+        return Inertia::render('QrCode/ProductPublicView', [
+            'product' => $productData,
+            'documents' => $documents,
+            'title' => $title
         ]);
     }
 
@@ -244,8 +295,19 @@ class QrCodeController extends Controller
         $format = strtolower($request->format ?? 'svg');
         
         if ($request->type === 'product') {
-            // Per ora disabilitato
-            abort(404, 'Funzionalità prodotto temporaneamente disabilitata');
+            $product = Product::findOrFail($request->id);
+            $filename = "qr-product-{$product->codice}.{$format}";
+            
+            // Usa l'URL diretto per il download
+            $publicUrl = route('qr.product.view', $product->id);
+            
+            $qrData = [
+                'type' => 'product',
+                'id' => $product->id,
+                'code' => $product->codice,
+                'name' => $product->nome,
+                'url' => $publicUrl
+            ];
         } else {
             // CORREZIONE: Cerca l'ordine con l'ID specifico e il tipo corretto
             $order = Document::where('id', $request->id)
@@ -295,7 +357,7 @@ class QrCodeController extends Controller
                 ->margin(10)
                 ->generate($publicUrl);
             
-            $filename = "qr-order-{$order->numero}.svg";
+            $filename = $request->type === 'product' ? "qr-product-{$product->codice}.svg" : "qr-order-{$order->numero}.svg";
             
             return response((string) $qrCode)
                 ->header('Content-Type', 'image/svg+xml')

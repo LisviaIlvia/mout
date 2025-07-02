@@ -208,6 +208,7 @@
 			:rateActive="rateActive"
 			:color="color"
 			:readonly="readonly"
+			:showRiepilogo="showRiepilogo"
 			ref="riepilogoDocumentsRef"
 		/>
 	</v-row>
@@ -267,6 +268,7 @@ export default {
 			type: Boolean,
 			default: false
 		},
+
 		// spedizioni: {
 		// 	type: Array,
 		// 	default: []
@@ -362,6 +364,10 @@ export default {
 			}
 
 			return prodotti;
+		},
+		showRiepilogo() {
+			// Mostra il riepilogo solo per ordini di acquisto (quando isVendita è false)
+			return !this.isVendita;
 		}
 	},
 	emits: ['ready'],
@@ -439,10 +445,11 @@ export default {
 						}
 					};
 					
-					// Aggiungi fornitore_id e riferimento solo se i fornitori sono disponibili
+					// Aggiungi fornitore_id, riferimento e note solo se i fornitori sono disponibili
 					if (this.fornitori && this.fornitori.length > 0) {
 						nuovoElemento.fornitore_id = null;
 						nuovoElemento.riferimento = '';
+						nuovoElemento.note = '';
 					}
 				}
 				this.form.elementi.push(nuovoElemento);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Base\AbstractDocumentController;
 use App\Exports\OrdineAcquistoExport;
 
+
 class OrdineAcquistoController extends AbstractDocumentController
 {
 	protected string $prefix_code = 'ODA';
@@ -19,7 +20,7 @@ class OrdineAcquistoController extends AbstractDocumentController
 	protected bool $dettagli_active = false;
 	protected bool $activeYear = false;
 	protected bool $export = true;
-	protected bool $pdf = false;
+	protected bool $pdf = true;
 	protected bool $clone = false;
 	protected bool $magic = false;
 	
@@ -42,4 +43,14 @@ class OrdineAcquistoController extends AbstractDocumentController
 	protected array $exportSetup = [
 		'class' => OrdineAcquistoExport::class
 	];
+
+	// Configurazione PDF personalizzata per ordini acquisto
+	protected array $pdfSetup = [
+		'template' => 'pdf.ordine-acquisto',
+		'format' => 'a4',
+		'landscape' => false,
+		'margins' => [15, 15, 15, 15],
+		'filename_prefix' => 'ordine-acquisto'
+	];
+
 }

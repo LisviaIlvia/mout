@@ -9,6 +9,7 @@ class crudTable {
 		this.urlCreate = props.new?.['create'] || null;
 		this.urlStore = props.new?.['store'] || null;
 		this.urlExportExcel = props.export;
+		this.urlImportCsv = props.import || null;
 		this.colorShow = 'color-show';
 		this.colorCreate = 'color-create';
 		this.colorEdit = 'color-edit';

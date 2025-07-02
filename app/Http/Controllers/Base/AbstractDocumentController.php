@@ -41,9 +41,19 @@ abstract class AbstractDocumentController extends AbstractCrudController
 	protected bool $rate_active = false;
     protected bool $dettagli_active = false;
 	protected bool $activeYear = true;
+	protected bool $import = false;
 	protected array $stati = ['Aperto', 'Chiuso'];
 	protected string $stato_iniziale = 'Aperto';
 	protected array $types_relation = [];
+
+	// Configurazione PDF
+	protected array $pdfSetup = [
+		'template' => 'pdf.document', // Template Blade di default
+		'format' => 'a4',            // Formato di default
+		'landscape' => false,        // Orientamento di default
+		'margins' => [15, 15, 15, 15], // Margini di default
+		'filename_prefix' => 'document' // Prefisso nome file di default
+	];
 
 	protected array $dialogSetup = [
 		'create' => [
@@ -91,6 +101,23 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			'content' => 'documents/DocumentsContent'
 		];
 	}
+
+	/**
+	 * Definisce i componenti PDF per i documenti.
+	 * Sovrascrive il metodo generico dell'AbstractCrudController.
+	 *
+	 * @return array
+	 */
+	protected function setComponentsPdf()
+	{
+		$content = str_replace(' ', '', ucwords(str_replace('-', ' ', strtolower($this->pattern))));
+		
+		return [
+			'pdf' => 'documents/DocumentsPdf',
+			'content' => 'documents/' . $content . 'PdfContent'
+		];
+	}
+	
 
 	protected function beforeStore(&$validatedData)
 	{
@@ -148,20 +175,23 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			$pattern_name = $this->pattern;
 
 			$files = request()->file('allegati');
-			foreach ($files as $index => $value) {
-				$file = $value['file'];
-				$extension = $file->getClientOriginalExtension();
-				$filename = $pattern_name . '-num' . $validatedData['numero'] . '-' . $validatedData['data'] . '-' . $index . '.' . $extension;
-				$file->storeAs('private/media/' . $pattern_name, $filename);
+			// Controlla se ci sono file prima di iterare
+			if ($files && is_array($files)) {
+				foreach ($files as $index => $value) {
+					$file = $value['file'];
+					$extension = $file->getClientOriginalExtension();
+					$filename = $pattern_name . '-num' . $validatedData['numero'] . '-' . $validatedData['data'] . '-' . $index . '.' . $extension;
+					$file->storeAs('private/media/' . $pattern_name, $filename);
 
-				$object->media()->create([
-					'name' => $filename,
-					'extension' => $file->getClientOriginalExtension(),
-					'mime_type' => $file->getClientMimeType(),
-					'url' => '/media/' . $pattern_name . '/' . $filename,
-					'relationable_id' => $object->id,
-					'relationable_type' => get_class($object)
-				]);
+					$object->media()->create([
+						'name' => $filename,
+						'extension' => $file->getClientOriginalExtension(),
+						'mime_type' => $file->getMimeType(),
+						'url' => '/media/' . $pattern_name . '/' . $filename,
+						'relationable_id' => $object->id,
+						'relationable_type' => get_class($object)
+					]);
+				}
 			}
 		}
 
@@ -194,10 +224,11 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							'order' => $key
 						];
 						
-						// Aggiungi fornitore_id e riferimento solo per documenti di vendita
+						// Aggiungi fornitore_id, riferimento e note solo per documenti di vendita
 						if (in_array('clienti', $this->intestatari)) {
 							$productData['fornitore_id'] = $element['fornitore_id'] ?? null;
 							$productData['riferimento'] = $element['riferimento'] ?? null;
+							$productData['note'] = $element['note'] ?? null;
 						}
 						
 						DocumentProduct::create($productData);
@@ -332,20 +363,23 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			// }
 
 			$files = request()->file('allegati');
-			foreach ($files as $index => $value) {
-				$file = $value['file'];
-				$extension = $file->getClientOriginalExtension();
-				$filename = $pattern_name . '-num' . $validatedData['numero'] . '-' . $validatedData['data'] . '-' . $index . '.' . $extension;
-				$file->storeAs('private/media/' . $pattern_name, $filename);
+			// Controlla se ci sono file prima di iterare
+			if ($files && is_array($files)) {
+				foreach ($files as $index => $value) {
+					$file = $value['file'];
+					$extension = $file->getClientOriginalExtension();
+					$filename = $pattern_name . '-num' . $validatedData['numero'] . '-' . $validatedData['data'] . '-' . $index . '.' . $extension;
+					$file->storeAs('private/media/' . $pattern_name, $filename);
 
-				$object->media()->create([
-					'name' => $filename,
-					'extension' => $file->getClientOriginalExtension(),
-					'mime_type' => $file->getMimeType(),
-					'url' => '/media/' . $pattern_name . '/' . $filename,
-					'relationable_id' => $object->id,
-					'relationable_type' => get_class($object)
-				]);
+					$object->media()->create([
+						'name' => $filename,
+						'extension' => $file->getClientOriginalExtension(),
+						'mime_type' => $file->getMimeType(),
+						'url' => '/media/' . $pattern_name . '/' . $filename,
+						'relationable_id' => $object->id,
+						'relationable_type' => get_class($object)
+					]);
+				}
 			}
 		}
 
@@ -388,6 +422,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 							if (in_array('clienti', $this->intestatari)) {
 								$productData['fornitore_id'] = $element['fornitore_id'] ?? null;
 								$productData['riferimento'] = $element['riferimento'] ?? null;
+								$productData['note'] = $element['note'] ?? null;
 							}
 							
 							DocumentProduct::create($productData);
@@ -497,7 +532,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		return $data;
 	}
 
-	//  Modificare il metodo getElementi per includere il fornitore
+	
 	// Modifico il metodo da private a protected per poterlo utilizzare nel controller figlio
 	protected function getElementi(Document $document)
 	{
@@ -541,6 +576,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'importo' => $product->quantita * $product->prezzo,
 				'fornitore_id' => $product->fornitore_id,
 				'riferimento' => $product->riferimento,
+				'note' => $product->note,
 				'iva' => [
 					'aliquota_iva_id' => $product->aliquota_iva_id,
 					'aliquota' => $product->aliquotaIva->aliquota
@@ -700,6 +736,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 		if (in_array('clienti', $this->intestatari)) {
 			$rules['elementi.*.fornitore_id'] = 'nullable|integer|exists:entities,id'; // Fornitore opzionale per merci/servizi
 			$rules['elementi.*.riferimento'] = 'nullable|string|max:255'; // Riferimento opzionale per merci/servizi
+			$rules['elementi.*.note'] = 'nullable|string|max:255'; // Note opzionale per merci/servizi
 		}
 
 		// Aggiungi regole per i dettagli se attivi
@@ -780,7 +817,7 @@ abstract class AbstractDocumentController extends AbstractCrudController
 			'store' => $jsonData['store'] ?? [],
 			'update' => $jsonData['update'] ?? [],
 			'clone' => $jsonData['clone'] ?? [],
-			'destroy' => $jsonData['destroy'] ?? []
+			'destroy' => $jsonData['destroy'] ?? [],
 		];
 
 		$data = $typeMap[$type] ?? [];
@@ -790,7 +827,8 @@ abstract class AbstractDocumentController extends AbstractCrudController
 				'show' => 'show',
 				'edit' => 'edit',
 				'update' => 'edit',
-				'destroy' => 'delete'
+				'destroy' => 'delete',
+				'pdf' => 'pdf'
 			];
 			
 			// Aggiungi azioni solo se abilitate
@@ -1155,5 +1193,98 @@ abstract class AbstractDocumentController extends AbstractCrudController
 
 			return response()->json(['record' => $data]);
 		});
+	}
+
+	/**
+	 * Implementa la generazione PDF per i documenti.
+	 * Sovrascrive il metodo generico dell'AbstractCrudController.
+	 *
+	 * @param \Illuminate\Database\Eloquent\Model $object
+	 * @return \Symfony\Component\HttpFoundation\Response
+	 */
+	protected function generatePdf(Model $object)
+	{
+		try {
+			// 1. Recupera il modello del documento
+			$document = $object;
+
+			// 2. Carica tutte le relazioni necessarie per il PDF in un'unica query (Eager Loading)
+			$document->load([
+				'entity',
+				'indirizzo',
+				'products.product.aliquotaIva',
+				'products.product.categories',
+				'altro.aliquotaIva',
+				'descrizioni',
+				'dettagli',
+				'media'
+			]);
+
+			// 3. Prepara le immagini degli allegati per l'inclusione nel PDF
+			$document->media->each(function ($media) {
+				if (str_starts_with($media->mime_type, 'image/')) {
+					$imagePath = storage_path('app/private/media/' . $this->pattern . '/' . $media->name);
+					if (file_exists($imagePath)) {
+						$media->base64_data = base64_encode(file_get_contents($imagePath));
+					}
+				}
+			});
+
+			// 4. Recupera tutti gli elementi del documento (prodotti, altro, descrizioni, ecc.)
+			$elementi = $this->getElementi($document);
+
+			// 5. Raggruppa gli elementi per categoria
+			$elementiPerCategoria = $elementi->groupBy(fn($item) => $item['categoria']['nome'] ?? 'Senza categoria');
+
+			// 6. Prepara i dati da passare al template Blade del PDF
+			$data = [
+				'document' => $document,
+				'elementi' => $elementi,
+				'elementiPerCategoria' => $elementiPerCategoria,
+				'azienda' => \App\Models\Azienda::first(),
+				'aziendaIndirizzi' => \App\Models\AziendaIndirizzo::where('azienda_id', 1)->get(),
+			];
+
+			// 6.1. Permette ai controller figli di personalizzare i dati del PDF
+			$data = $this->beforePdfGeneration($data, $document);
+
+			// 7. Genera il PDF usando la configurazione personalizzata
+			$pdf = Pdf::view($this->pdfSetup['template'], $data)
+				->headerView('pdf.header-pdf', $data)
+				->format($this->pdfSetup['format'])
+				->margins(...$this->pdfSetup['margins'])
+				->name($this->pdfSetup['filename_prefix'] . '-' . $document->numero . '.pdf');
+
+			// 8. Applica orientamento landscape se configurato
+			if ($this->pdfSetup['landscape']) {
+				$pdf->landscape();
+			}
+
+			// 9. Restituisce il PDF come download al browser dell'utente
+			return $pdf->download();
+			
+		} catch (\Exception $e) {
+			// 10. Gestione errori: logga l'errore e restituisce una risposta JSON con errore 500
+			\Illuminate\Support\Facades\Log::error('Errore nella generazione PDF ' . $this->pattern . ' ID ' . $document->id . ': ' . $e->getMessage());
+			\Illuminate\Support\Facades\Log::error('Stack trace: ' . $e->getTraceAsString());
+			
+			return response()->json([
+				'error' => 'Errore nella generazione del PDF',
+				'message' => $e->getMessage()
+			], 500);
+		}
+	}
+
+	/**
+	 * Hook method per personalizzare i dati del PDF prima della generazione
+	 * Può essere sovrascritto dai controller figli per aggiungere dati specifici
+	 *
+	 * @param array $data Dati del PDF
+	 * @param Document $document Documento
+	 * @return array Dati modificati
+	 */
+	protected function beforePdfGeneration(array $data, Document $document): array
+	{
+		return $data;
 	}
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 abstract class AbstractCrudController extends Controller
@@ -18,6 +19,7 @@ abstract class AbstractCrudController extends Controller
 	protected array $indexSetup;
 	protected array $dialogSetup;
 	protected bool $export = false;
+	protected bool $import = false;
 	protected bool $create = true;
 	protected bool $createData = false;
 	protected bool $pdf = false;
@@ -25,6 +27,12 @@ abstract class AbstractCrudController extends Controller
 	protected bool $magic = false;
 	protected bool $activeYear = false;
 	protected bool $recordsYear = false;
+	protected bool $qrCode = false; // Abilita QR code
+	protected array $qrCodeSetup = [
+		'type' => 'product', // 'product' o 'order'
+		'size' => 300,
+		'margin' => 10
+	];
 	
 	protected array $verifyDestroy = [];  // Relazioni da verificare prima di cancellare
 	
@@ -41,7 +49,12 @@ abstract class AbstractCrudController extends Controller
 	{
 		$collection = $this->getCollectionIndex();
 		
-		$props = $this->getPropsIndex($collection);
+		$props = $this->getPropsIndex($collection, [
+			'show' => 'show', 
+			'edit' => 'edit', 
+			'update' => 'edit', 
+			'destroy' => 'delete'
+		], true, $this->export);
 	
 
 		return Inertia::render($this->getComponentIndex(), $props);
@@ -176,6 +189,37 @@ abstract class AbstractCrudController extends Controller
 		
         return Excel::download(new $export_class($object, $year), $export_file . '.xlsx');
 	}
+
+	/**
+	 * Genera il PDF per una determinata risorsa.
+	 * Metodo generico che può essere sovrascritto dai controller figli.
+	 *
+	 * @param int $id  ID della risorsa da esportare in PDF
+	 * @return \Symfony\Component\HttpFoundation\Response
+	**/
+	public function pdf($id)
+	{
+		$object = $this->resolveModel($id);
+		
+		// Metodo hook per personalizzare la generazione PDF
+		return $this->generatePdf($object);
+	}
+
+	/**
+	 * Hook method per la generazione PDF.
+	 * Deve essere implementato dai controller figli che supportano PDF.
+	 *
+	 * @param \Illuminate\Database\Eloquent\Model $object
+	 * @return \Symfony\Component\HttpFoundation\Response
+	**/
+	protected function generatePdf(Model $object)
+	{
+		// Implementazione di default che restituisce errore
+		return response()->json([
+			'error' => 'PDF generation not implemented for this resource',
+			'message' => 'This resource does not support PDF generation'
+		], 501);
+	}
 	
 	public function getPattern()
 	{
@@ -228,6 +272,7 @@ abstract class AbstractCrudController extends Controller
 			'data' => $this->getDataIndex($collection, $actionPermissions),
 			'new' => $create_active ? $this->getAction() : null,
 			'export' => $this->export ? $this->getAction(type: 'export') : null,
+			'import' => $this->import ? $this->getAction(type: 'import') : null,
 			'dialogSetup' => $this->dialogSetup ?? ['create' => null, 'edit' => null, 'show' => null],
 			'components' => $this->getComponentsDialog()
 		];
@@ -260,6 +305,26 @@ abstract class AbstractCrudController extends Controller
 			'show' => 'Crud/CrudShow',
 			'edit' => 'Crud/CrudEdit',
 			'content' => $content . 'Content'
+		];
+	}
+
+	/**
+	 * Definisce i componenti PDF per il controller.
+	 * Può essere sovrascritto dai controller figli per personalizzare i componenti PDF.
+	 * 
+	 * NOTA: Attualmente i PDF sono gestiti tramite download diretto.
+	 * Questo metodo è disponibile per future implementazioni di componenti PDF
+	 * (es. preview, editor, configurazione avanzata).
+	 *
+	 * @return array
+	 */
+	protected function setComponentsPdf()
+	{
+		$content = str_replace(' ', '', ucwords(str_replace('-', ' ', strtolower($this->pattern))));
+		
+		return [
+			'pdf' => 'Crud/CrudPdf',
+			'content' => $content . 'PdfContent'
 		];
 	}
 	
@@ -349,9 +414,9 @@ abstract class AbstractCrudController extends Controller
 				return $route;
 			})->toArray();
 
-			// Aggiungi azione QR code solo per ordini vendita
-			// Il pattern indica il tipo di entità (es: 'ordini-vendita', 'ordini-acquisto')
-			if (in_array($pattern, ['ordini-vendita'])) {
+			// Aggiungi azione QR code per ordini vendita e merci
+			// Il pattern indica il tipo di entità (es: 'ordini-vendita', 'merci')
+			if (in_array($pattern, ['ordini-vendita', 'merci'])) {
 				$actions['qr'] = true;
 			} else {
 				$actions['qr'] = false; // Nasconde il pulsante per altre entità
@@ -360,7 +425,13 @@ abstract class AbstractCrudController extends Controller
 			return $actions;
 		} 
 		
-		if($type != null) return $user->can($pattern . '.' . $type) ? route($pattern . '.' . $type, false): false;
+		if($type != null) {
+			// Per l'import, usa lo stesso permesso del create
+			if ($type === 'import') {
+				return $user->can($pattern . '.create') ? route($pattern . '.import') : false;
+			}
+			return $user->can($pattern . '.' . $type) ? route($pattern . '.' . $type, false): false;
+		}
 
 		$defaultActions = ['create' => 'create', 'store' => 'create'];
 		return collect($defaultActions)->mapWithKeys(function ($action, $routeAction) use ($user, $pattern, $permission) {
@@ -437,6 +508,21 @@ abstract class AbstractCrudController extends Controller
 			'create' => isset($components['create']) ? $this->root . $components['create'] : null,
 			'show' => isset($components['show']) ? $this->root . $components['show'] : null,
 			'edit' => isset($components['edit']) ? $this->root . $components['edit'] : null,
+			'content' => isset($components['content']) ? $this->root . $components['content'] : null,
+		];
+	}
+
+	/**
+	 * Restituisce i path completi dei componenti PDF.
+	 *
+	 * @return array
+	**/
+	private function getComponentsPdf() 
+	{
+		$components = $this->setComponentsPdf();
+
+		return [
+			'pdf' => isset($components['pdf']) ? $this->root . $components['pdf'] : null,
 			'content' => isset($components['content']) ? $this->root . $components['content'] : null,
 		];
 	}

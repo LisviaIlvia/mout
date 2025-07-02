@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class DocumentProduct extends Model
 {
     protected $table = 'documents_products';
-    protected $fillable = ['quantita', 'prezzo', 'aliquota_iva_id', 'order', 'product_id', 'document_id', 'fornitore_id', 'riferimento'];
+    protected $fillable = ['quantita', 'prezzo', 'aliquota_iva_id', 'order', 'product_id', 'document_id', 'fornitore_id', 'riferimento', 'note'];
 
 	public function product()
     {

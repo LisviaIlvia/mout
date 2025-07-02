@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Base\AbstractDocumentController;
 use App\Exports\OrdineVenditaExport;
+use App\Imports\OrdineVenditaImport;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Http\Request;
 use Spatie\LaravelPdf\Facades\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class OrdineVenditaController extends AbstractDocumentController
 {
@@ -20,6 +24,7 @@ class OrdineVenditaController extends AbstractDocumentController
 	protected bool $dettagli_active = true;
 	protected bool $activeYear = false;
 	protected bool $export = true;
+	protected bool $import = true;
 	protected bool $pdf = true;
 	protected bool $clone = true;
 	protected bool $magic = true;
@@ -50,94 +55,83 @@ class OrdineVenditaController extends AbstractDocumentController
 		'class' => OrdineVenditaExport::class
 	];
 
+	// Configurazione PDF personalizzata per ordini vendita
+	protected array $pdfSetup = [
+		'template' => 'pdf.ordine-vendita',
+		'format' => 'a3',
+		'landscape' => true,
+		'margins' => [15, 15, 15, 15],
+		'filename_prefix' => 'ordine-vendita'
+	];
+
+	// /**
+	// OPZIONALE
+	//  * Personalizza i componenti PDF per ordini vendita.
+	//  * Sovrascrive il metodo dell'AbstractDocumentController.
+	//  *
+	//  * @return array
+	//  */
+	// protected function setComponentsPdf()
+	// {
+	// 	return [
+	// 		'pdf' => 'documents/OrdiniVenditaPdf',
+	// 		'content' => 'documents/OrdiniVenditaPdfContent'
+	// 	];
+	// }
+
 	/**
-	 * Genera il PDF dell'ordine vendita
+	 * Importa ordini vendita da file CSV
 	 *
-	 * @param int $id ID dell'ordine vendita
-	 * @return \Symfony\Component\HttpFoundation\Response
+	 * @param Request $request
+	 * @return \Illuminate\Http\JsonResponse
 	 */
-	public function pdf($id)
+	public function import(Request $request)
 	{
 		try {
-			// 1. Recupera il modello dell'ordine vendita tramite l'ID
-			//    Usa un metodo del controller base per trovare il record (es. Document::findOrFail($id))
-			$document = $this->resolveModel($id);
-
-			// 2. Carica tutte le relazioni necessarie per il PDF in un'unica query (Eager Loading)
-			//    - entity: il cliente destinatario
-			//    - indirizzo: indirizzo di spedizione/fatturazione
-			//    - products.product.aliquotaIva: prodotti, con relativa aliquota IVA
-			//    - products.product.categories: categorie dei prodotti
-			//    - altro.aliquotaIva: altri elementi con aliquota IVA
-			//    - descrizioni: eventuali righe descrittive
-			//    - dettagli: dettagli tecnici dell'ordine
-			//    - media: allegati (es. immagini)
-			$document->load([
-				'entity',
-				'indirizzo',
-				'products.product.aliquotaIva',
-				'products.product.categories',
-				'altro.aliquotaIva',
-				'descrizioni',
-				'dettagli',
-				'media'
+			// Validazione del file
+			$request->validate([
+				'csv_file' => 'required|file|mimes:csv,txt|max:10240', // Max 10MB
+				'year' => 'nullable|integer|min:2020|max:2030'
+			], [
+				'csv_file.required' => 'Il file CSV è obbligatorio',
+				'csv_file.file' => 'Il file caricato non è valido',
+				'csv_file.mimes' => 'Il file deve essere in formato CSV',
+				'csv_file.max' => 'Il file non può superare 10MB'
 			]);
 
-			// 3. Prepara le immagini degli allegati per l'inclusione nel PDF
-			//    - Per ogni media di tipo immagine, carica il file dal filesystem
-			//    - Codifica l'immagine in base64 e la aggiunge come proprietà all'oggetto media
-			$document->media->each(function ($media) {
-				if (str_starts_with($media->mime_type, 'image/')) {
-					$imagePath = storage_path('app/private/media/ordini-vendita/' . $media->name);
-					if (file_exists($imagePath)) {
-						$media->base64_data = base64_encode(file_get_contents($imagePath));
-					}
-				}
-			});
+			$year = $request->input('year', date('Y'));
+			$import = new OrdineVenditaImport($year);
 
-			// 4. Recupera tutti gli elementi dell'ordine (prodotti, altro, descrizioni, ecc.)
-			//    - Usa un metodo helper del controller base
-			$elementi = $this->getElementi($document);
+			// Esegui l'importazione
+			Excel::import($import, $request->file('csv_file'));
 
-			// 5. Raggruppa gli elementi per categoria (es. per visualizzazione ordinata nel PDF)
-			$elementiPerCategoria = $elementi->groupBy(fn($item) => $item['categoria']['nome'] ?? 'Senza categoria');
+			// Ottieni i risultati
+			$importedCount = $import->getImportedCount();
+			$errors = $import->getErrors();
 
-			// 6. Prepara i dati da passare al template Blade del PDF
-			//    - document: il modello ordine con tutte le relazioni
-			//    - elementi: tutti gli elementi dell'ordine
-			//    - elementiPerCategoria: elementi raggruppati per categoria
-			//    - azienda: dati dell'azienda (mittente)
-			//    - aziendaIndirizzi: indirizzi dell'azienda
-			$data = [
-				'document' => $document,
-				'elementi' => $elementi,
-				'elementiPerCategoria' => $elementiPerCategoria,
-				'azienda' => \App\Models\Azienda::first(),
-				'aziendaIndirizzi' => \App\Models\AziendaIndirizzo::where('azienda_id', 1)->get(),
-			];
+			if (!empty($errors)) {
+				return response()->json([
+					'success' => false,
+					'message' => 'Importazione completata con errori',
+					'imported_count' => $importedCount,
+					'errors' => $errors
+				], 422);
+			}
 
-			// 7. Genera il PDF usando la facade Spatie\LaravelPdf
-			//    - Usa il template Blade 'pdf.ordine-vendita'
-			//    - Passa i dati preparati
-			//    - Imposta formato A4 e margini
-			//    - Imposta il nome del file PDF
-			$pdf = Pdf::view('pdf.ordine-vendita', $data)
-				->format('a4')
-				->margins(15, 15, 15, 15)
-				->name('ordine-vendita-' . $document->numero . '.pdf');
+			return response()->json([
+				'success' => true,
+				'message' => "Importazione completata con successo. Importati {$importedCount} ordini vendita.",
+				'imported_count' => $importedCount
+			]);
 
-			// 8. Restituisce il PDF come download al browser dell'utente
-			return $pdf->download();
-			
 		} catch (\Exception $e) {
-			// 9. Gestione errori: logga l'errore e restituisce una risposta JSON con errore 500
-			\Log::error('Errore nella generazione PDF ordine vendita ID ' . $id . ': ' . $e->getMessage());
-			\Log::error('Stack trace: ' . $e->getTraceAsString());
+			Log::error('Errore importazione CSV ordini vendita: ' . $e->getMessage());
 			
 			return response()->json([
-				'error' => 'Errore nella generazione del PDF',
-				'message' => $e->getMessage()
+				'success' => false,
+				'message' => 'Errore durante l\'importazione: ' . $e->getMessage()
 			], 500);
 		}
 	}
+
 }

@@ -70,6 +70,7 @@ const myTheme = {
 		'color-export-excel': colors.green.lighten1,
 		'color-clone': colors.pink.darken4,
 		'color-pdf': colors.red.darken4,
+		'color-qr': colors.blue.lighten1,
 		'color-magic': colors.purple.lighten1,
 		'color-email': colors.indigo.lighten1,
 		'color-doc': colors.deepPurple.lighten1,

@@ -85,9 +85,11 @@
 		</v-card>
 	</v-col>
 	<v-col 
+		v-if="showRiepilogo"
 		:cols="rateActive ? 4 : 6" 
 		class="py-0 mt-6 d-flex flex-column"
 	>
+	<!-- Riepilogo IVA -->
 		<v-card elevation="4" variant="flat" class="flex-grow-1 d-flex flex-column">
 			<v-toolbar class="px-3">
 				<v-row class="align-center bg-grey-lighten-3">
@@ -138,9 +140,11 @@
 		</v-card>
 	</v-col>
 	<v-col 
+		v-if="showRiepilogo"
 		:cols="rateActive ? 4 : 6" 
 		class="py-0 mt-6 d-flex flex-column"
 	>
+	<!-- Riepilogo Documento -->
 		<v-card elevation="4" variant="flat" class="flex-grow-1 d-flex flex-column">
 			<v-toolbar class="px-3">
 				<v-row class="align-center bg-grey-lighten-3">
@@ -233,6 +237,10 @@ export default {
 		readonly: {
 			type: Boolean,
 			default: false
+		},
+		showRiepilogo: {
+			type: Boolean,
+			default: true
 		}
     },
 	computed: {

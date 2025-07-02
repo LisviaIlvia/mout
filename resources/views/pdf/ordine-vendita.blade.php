@@ -6,479 +6,320 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ordine Vendita {{ $document->numero }}</title>
     <style>
+        @page {
+            size: A3 landscape;
+            margin: 20mm 15mm 20mm 15mm;
+
+            @top-center {
+                content: element(page-header);
+            }
+        }
+
         body {
+            counter-reset: page;
             font-family: 'DejaVu Sans', Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 11px;
+            line-height: 1.3;
             color: #333;
             margin: 0;
-            padding: 0;
         }
 
-        .header {
-            border-bottom: 2px solid #333;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+        #page-header {
+            position: running(page-header);
         }
 
-        .company-info {
-            float: left;
-            width: 50%;
+        /* Layout principale */
+        .container {
+            width: 100%;
+            max-width: 100%;
         }
 
-        .document-info {
-            float: right;
-            width: 45%;
-            text-align: right;
+        /* Layout principale */
+        .main-layout {
+            display: flex;
+            gap: 10px;
+            min-height: 600px;
+            /* margin-top: 10px; */
         }
 
-        .clear {
-            clear: both;
+        .left-column {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
-        .section {
-            margin-bottom: 25px;
+        .right-column {
+            flex: 2;
+            padding: 10px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e0e0e0;
+            height: 820px;
         }
 
-        .section-title {
-            font-size: 14px;
+        /* Dettagli tecnici e note */
+        .details-section {
+            display: flex;
+            gap: 10px;
+        }
+
+        .details-table-container {
+            flex: 1;
+        }
+
+        .notes-container {
+            flex: 1;
+            padding: 10px;
+            background: #fafbfc;
+            width: 20%;
+            border: 1px solid #e0e0e0;
+        }
+
+        .notes-title {
             font-weight: bold;
-            color: #333;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
         }
 
-        .customer-info {
-            float: left;
-            width: 60%;
+        .notes-text {
+            font-size: 11px;
         }
 
-        .order-details {
-            float: right;
-            width: 35%;
+        /* Tabella componenti */
+        .components-table-container {
+            flex: 1;
+            margin-top: 10px;
+            margin-bottom: 200px;
         }
 
+        /* Tabella prodotti */
         .table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            font-size: 9px;
         }
 
         .table th {
             background-color: #f5f5f5;
             border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
+            padding: 4px;
             font-weight: bold;
+            font-size: 9px;
         }
 
         .table td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 3px;
+            font-size: 9px;
         }
 
-        .table .text-right {
-            text-align: right;
-        }
-
-        .table .text-center {
+        .rif,
+        .qt {
+            width: 7%;
             text-align: center;
         }
 
-        .totals {
-            float: right;
-            width: 300px;
-            margin-top: 20px;
+        .componenti,
+        .fornitore,
+        .note {
+            text-align: left;
         }
 
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
+        .text-center {
+            text-align: center;
         }
 
-        .total-row.final {
+        .categoria-header {
+            background-color: #e0e0e0;
             font-weight: bold;
-            font-size: 14px;
-            border-top: 2px solid #333;
-            padding-top: 10px;
-            margin-top: 10px;
-        }
-
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ccc;
             font-size: 10px;
-            color: #666;
         }
 
-        .page-break {
-            page-break-before: always;
+        /* Immagine esploso */
+        .esploso-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            margin: 0 auto;
+            display: block;
         }
 
-        /* Stili per gli allegati */
-        .attachments {
-            margin-top: 30px;
+        .esploso-placeholder {
+            color: #999;
+            font-style: italic;
         }
 
-        .attachments-list {
-            margin-top: 10px;
+        /* Sezione firme */
+       
+
+        .signatures-section {
+            display: flex;
+            margin-top: 50px;
+            min-height: 60px;
         }
 
-        .attachment-item {
-            margin-bottom: 10px;
-            padding: 8px;
-            
-        }
-
-        .attachment-image {
-            max-width: 400px;
-            max-height: 700px;
-            margin: 5px 0;
-            border: 1px solid #ccc;
-        }
-
-        .attachment-info {
-            font-size: 11px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        /* Stili per i dettagli */
-        .details-section {
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-
-        .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 10px;
-        }
-
-        .detail-item {
-            margin-bottom: 8px;
-        }
-
-        .detail-label {
-            font-weight: bold;
-            color: #333;
-            font-size: 11px;
-        }
-
-        .detail-value {
-            color: #666;
-            font-size: 11px;
-        }
-
-        .detail-checkbox {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 1px solid #333;
-            margin-right: 5px;
+        .signature-column {
+            flex: 1;
             text-align: center;
-            line-height: 10px;
-            font-size: 8px;
+            padding: 0 24px;
         }
 
-        .detail-checkbox.checked {
-            background-color: #333;
-            color: white;
+        .signature-title {
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+            color: #222;
+        }
+
+        .signature-line {
+            border-bottom: 1.5px solid #222;
+            width: 35%;
+            margin: 0px auto 0 auto;
+            height: 32px;
         }
     </style>
 </head>
 
 <body>
-    <!-- Header con informazioni azienda e documento -->
-    <div class="header">
-        <div class="company-info">
-            @if($azienda)
-            <h1>{{ $azienda->ragione_sociale ?? 'Nome Azienda' }}</h1>
-            @if($aziendaIndirizzi->count() > 0)
-            @php $indirizzo = $aziendaIndirizzi->first(); @endphp
-            <p>
-                {{ $indirizzo->indirizzo ?? '' }}<br>
-                {{ $indirizzo->cap ?? '' }} {{ $indirizzo->comune ?? '' }} ({{ $indirizzo->provincia ?? '' }})<br>
-                Tel: {{ $indirizzo->telefono ?? '' }}<br>
-                Email: {{ $azienda->pec ?? '' }}
-            </p>
-            @endif
-            @else
-            <h1>Nome Azienda</h1>
-            <p>Indirizzo azienda<br>
-                Tel: Telefono<br>
-                Email: email@azienda.com</p>
-            @endif
-        </div>
+    <div class="container">
 
-        <div class="document-info">
-            <h2>ORDINE DI VENDITA</h2>
-            <p><strong>Numero:</strong> {{ $document->numero }}</p>
-            <p><strong>Data:</strong> {{ \Carbon\Carbon::parse($document->data)->format('d/m/Y') }}</p>
-            <p><strong>Stato:</strong> {{ $document->stato ?? 'Aperto' }}</p>
-        </div>
+        <!-- LAYOUT PRINCIPALE: CONTENUTO E IMMAGINE ESPLOSO -->
+        <div class="main-layout">
+            <!-- COLONNA SINISTRA: CONTENUTO (60%) -->
+            <div class="left-column">
+                <!-- DETTAGLI TECNICI E NOTE -->
+                <div class="details-section">
+                    <!-- Tabella dettagli tecnici -->
+                    <div class="details-table-container">
+                        <table class="table">
+                            <tbody>
+                                <!-- PRIMA RIGA: Dettagli principali -->
+                                <tr>
+                                    <th>MOD. POLTRONA:</th>
+                                    <td>{{ $document->dettagli->mod_poltrona ?? '' }}</td>
+                                    <th>QUANTITA'</th>
+                                    <td>{{ $document->dettagli->quantita ?? '' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>FIANCHI FINALI</th>
+                                    <td>{{ $document->dettagli->fianchi_finali ?? '' }}</td>
+                                    <th>INTERASSE CM</th>
+                                    <td>{{ $document->dettagli->interasse_cm ?? '' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>LARGH. BRACCIOLO CM</th>
+                                    <td>{{ $document->dettagli->largh_bracciolo_cm ?? '' }}</td>
+                                    <th>RIVESTIMENTO</th>
+                                    <td>{{ $document->dettagli->rivestimento ?? '' }}</td>
+                                </tr>
 
-        <div class="clear"></div>
-    </div>
+                                <!-- SECONDA RIGA: Dettagli aggiuntivi -->
+                                <tr>
+                                    <th>RICAMO LOGO</th>
+                                    <td>@if($document->dettagli->ricamo_logo) SI @else NO @endif</td>
+                                    <th>PENDENZA</th>
+                                    <td>@if($document->dettagli->pendenza) SI @else NO @endif</td>
+                                </tr>
+                                <tr>
+                                    <th>FISSAGGIO A PAV.</th>
+                                    <td>@if($document->dettagli->fissaggio_pavimento) SI @else NO @endif</td>
+                                    <th>MONTAGGIO</th>
+                                    <td>@if($document->dettagli->montaggio) SI @else NO @endif</td>
+                                </tr>
+                                <tr>
+                                    <th>DATA DI EVASIONE PREVISTA</th>
+                                    <td>{{ $document->dettagli->data_evasione ? \Carbon\Carbon::parse($document->dettagli->data_evasione)->format('d/m/Y') : '' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-    <!-- Informazioni cliente e dettagli ordine -->
-    <div class="section">
-        <div class="customer-info">
-            <div class="section-title">DESTINATARIO</div>
-            @if($document->entity)
-            <p><strong>{{ $document->entity->nome }}</strong></p>
-            @if($document->entity->partita_iva)
-            <p>P.IVA: {{ $document->entity->partita_iva }}</p>
-            @endif
-            @if($document->entity->codice_fiscale)
-            <p>CF: {{ $document->entity->codice_fiscale }}</p>
-            @endif
-            @if($document->entity->email)
-            <p>Email: {{ $document->entity->email }}</p>
-            @endif
-            @if($document->indirizzo)
-            <p>
-                {{ $document->indirizzo->indirizzo ?? '' }}<br>
-                {{ $document->indirizzo->cap ?? '' }} {{ $document->indirizzo->comune ?? '' }} ({{ $document->indirizzo->provincia ?? '' }})
-            </p>
-            @endif
-            @else
-            <p>Cliente non specificato</p>
-            @endif
-        </div>
-
-        <div class="order-details">
-            <div class="section-title">DETTAGLI ORDINE</div>
-            <p><strong>Data Ordine:</strong> {{ \Carbon\Carbon::parse($document->data)->format('d/m/Y') }}</p>
-            @if($document->dettagli && $document->dettagli->data_evasione)
-            <p><strong>Data Evasione:</strong> {{ \Carbon\Carbon::parse($document->dettagli->data_evasione)->format('d/m/Y') }}</p>
-            @endif
-        </div>
-
-        <div class="clear"></div>
-    </div>
-
-    <!-- Dettagli specifici -->
-    @if($document->dettagli && ($document->dettagli->data_evasione || $document->dettagli->mod_poltrona || $document->dettagli->quantita || $document->dettagli->fianchi_finali || $document->dettagli->interasse_cm || $document->dettagli->largh_bracciolo_cm || $document->dettagli->rivestimento || $document->dettagli->ricamo_logo || $document->dettagli->pendenza || $document->dettagli->fissaggio_pavimento || $document->dettagli->montaggio))
-    <div class="section details-section" style="margin-top: 25px;">
-        <div class="section-title">DETTAGLI TECNICI</div>
-        <div class="details-grid">
-            
-            @if($document->dettagli->mod_poltrona)
-            <div class="detail-item">
-                <div class="detail-label">Modello Poltrona:</div>
-                <div class="detail-value">{{ $document->dettagli->mod_poltrona }}</div>
-            </div>
-            @endif
-
-            @if($document->dettagli->quantita)
-            <div class="detail-item">
-                <div class="detail-label">Quantità:</div>
-                <div class="detail-value">{{ $document->dettagli->quantita }}</div>
-            </div>
-            @endif
-
-            @if($document->dettagli->fianchi_finali)
-            <div class="detail-item">
-                <div class="detail-label">Fianchi Finali:</div>
-                <div class="detail-value">{{ $document->dettagli->fianchi_finali }}</div>
-            </div>
-            @endif
-
-            @if($document->dettagli->interasse_cm)
-            <div class="detail-item">
-                <div class="detail-label">Interasse:</div>
-                <div class="detail-value">{{ $document->dettagli->interasse_cm }} cm</div>
-            </div>
-            @endif
-
-            @if($document->dettagli->largh_bracciolo_cm)
-            <div class="detail-item">
-                <div class="detail-label">Larghezza Bracciolo:</div>
-                <div class="detail-value">{{ $document->dettagli->largh_bracciolo_cm }} cm</div>
-            </div>
-            @endif
-
-            @if($document->dettagli->rivestimento)
-            <div class="detail-item">
-                <div class="detail-label">Rivestimento:</div>
-                <div class="detail-value">{{ $document->dettagli->rivestimento }}</div>
-            </div>
-            @endif
-        </div>
-
-        <!-- Opzioni booleane -->
-        @if($document->dettagli->ricamo_logo || $document->dettagli->pendenza || $document->dettagli->fissaggio_pavimento || $document->dettagli->montaggio)
-        <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-            <div class="detail-label" style="margin-bottom: 8px;">Opzioni Aggiuntive:</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
-                @if($document->dettagli->ricamo_logo)
-                <div class="detail-item" style="display: flex; align-items: center;">
-                    <span class="detail-checkbox checked">✓</span>
-                    <span class="detail-label" style="margin-left: 5px;">Ricamo Logo</span>
+                    <!-- Note -->
+                    <div class="notes-container">
+                        <div class="notes-title">Note:</div>
+                        <div class="notes-text">{{ $document->note ?? '' }}</div>
+                    </div>
                 </div>
-                @endif
-                @if($document->dettagli->pendenza)
-                <div class="detail-item" style="display: flex; align-items: center;">
-                    <span class="detail-checkbox checked">✓</span>
-                    <span class="detail-label" style="margin-left: 5px;">Pendenza</span>
+
+                <!-- TABELLA COMPONENTI -->
+                <div class="components-table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th class="componenti">COMPONENTI</th>
+                                <th class="fornitore">FORNITORE</th>
+                                <th class="rif">RIF. DIS.</th>
+                                <th class="qt">Q.TA'</th>
+                                <th class="note">NOTE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($elementiPerCategoria as $categoria => $prodotti)
+                            <tr>
+                                <td colspan="7" class="categoria-header">
+                                    {{ strtoupper($categoria) }}
+                                </td>
+                            </tr>
+                            @foreach($prodotti as $elemento)
+                            @if($elemento['tipo'] !== 'descrizione')
+                            <tr>
+                                <td>{{ $elemento['nome'] ?? $elemento['descrizione'] ?? '-' }}</td>
+                                <td>
+                                    @if(isset($elemento['fornitore_id']) && $elemento['fornitore_id'])
+                                    @php
+                                    $fornitore = \App\Models\Entity::find($elemento['fornitore_id']);
+                                    @endphp
+                                    {{ $fornitore ? $fornitore->nome : '-' }}
+                                    @else
+                                    -
+                                    @endif
+                                </td>
+                                <td class="text-center">{{ $elemento['quantita'] ?? '-' }}</td>
+                                <td class="text-center">{{ $elemento['riferimento'] ?? '-' }}</td>
+                                <td>{{ $elemento['note'] ?? '-' }}</td>
+                            </tr>
+                            @endif
+                            @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-                @endif
-                @if($document->dettagli->fissaggio_pavimento)
-                <div class="detail-item" style="display: flex; align-items: center;">
-                    <span class="detail-checkbox checked">✓</span>
-                    <span class="detail-label" style="margin-left: 5px;">Fissaggio Pavimento</span>
-                </div>
-                @endif
-                @if($document->dettagli->montaggio)
-                <div class="detail-item" style="display: flex; align-items: center;">
-                    <span class="detail-checkbox checked">✓</span>
-                    <span class="detail-label" style="margin-left: 5px;">Montaggio</span>
-                </div>
-                @endif
             </div>
-        </div>
-        @endif
-    </div>
-    @endif
 
-    <!-- Tabella elementi -->
-    <div class="section">
-        <!-- <div class="section-title">ELEMENTI ORDINATI</div> -->
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Codice</th>
-                    <th>Componenti</th>
-                    <th>Fornitore</th>
-                    <th>Rif.</th>
-                    <th class="text-center">Q.tà</th>
-                    <th class="text-center">U.M.</th>
-                    <th class="text-right">Prezzo Unit.</th>
-                    <th class="text-center">IVA</th>
-                    <th class="text-right">Importo</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($elementiPerCategoria as $categoria => $prodotti)
-                <tr>
-                    <td colspan="9" style="font-weight: bold; border-top: 2px solid #000;">
-                        {{ strtoupper($categoria) }}
-                    </td>
-                </tr>
-                @foreach($prodotti as $elemento)
-                <tr>
-                    <td>
-                        @if($elemento['tipo'] === 'merci' || $elemento['tipo'] === 'servizi')
-                        {{ $elemento['codice'] ?? '-' }}
-                        @else
-                        -
-                        @endif
-                    </td>
-                    <td>{{ $elemento['nome'] ?? $elemento['descrizione'] ?? '-' }}</td>
-                    <td>
-                        @if(isset($elemento['fornitore_id']) && $elemento['fornitore_id'])
-                        @php
-                        $fornitore = \App\Models\Entity::find($elemento['fornitore_id']);
-                        @endphp
-                        {{ $fornitore ? $fornitore->nome : '-' }}
-                        @else
-                        -
-                        @endif
-                    </td>
-                    <td>{{ $elemento['riferimento'] ?? '-' }}</td>
-                    <td class="text-center">{{ $elemento['quantita'] ?? '-' }}</td>
-                    <td class="text-center">{{ $elemento['unita_misura'] ?? 'NR' }}</td>
-                    <td class="text-right">{{ number_format($elemento['prezzo'] ?? 0, 2, ',', '.') }} €</td>
-                    <td class="text-center">{{ $elemento['iva']['aliquota'] ?? '-' }}%</td>
-                    <td class="text-right">{{ number_format($elemento['importo'] ?? 0, 2, ',', '.') }} €</td>
-                </tr>
-                @endforeach
-                @endforeach
-            </tbody>
-
-        </table>
-    </div>
-
-    <!-- Totali -->
-    <div class="totals">
-        @php
-        $imponibile = collect($elementi)->sum('importo');
-        $iva = collect($elementi)->sum(function($elemento) {
-        $aliquota = $elemento['iva']['aliquota'] ?? 0;
-        $importo = $elemento['importo'] ?? 0;
-        return ($importo * $aliquota) / 100;
-        });
-        $totale = $imponibile + $iva;
-        @endphp
-
-        <div class="total-row">
-            <span>Imponibile:</span>
-            <span>{{ number_format($imponibile, 2, ',', '.') }} €</span>
-        </div>
-        <div class="total-row">
-            <span>IVA:</span>
-            <span>{{ number_format($iva, 2, ',', '.') }} €</span>
-        </div>
-        <div class="total-row final">
-            <span>TOTALE:</span>
-            <span>{{ number_format($totale, 2, ',', '.') }} €</span>
-        </div>
-    </div>
-
-    <div class="clear"></div>
-
-    <!-- Note -->
-    @if($document->note)
-    <div class="section">
-        <div class="section-title">NOTE</div>
-        <p>{{ $document->note }}</p>
-    </div>
-    @endif
-
-    <!-- Allegati -->
-    @if($document->media && $document->media->count() > 0)
-    <div class="section attachments">
-        <div class="section-title">ALLEGATI</div>
-        <div class="attachments-list">
-            @foreach($document->media as $media)
-            <div class="attachment-item">
-                
-                
-                @if(str_starts_with($media->mime_type, 'image/') && isset($media->base64_data))
-                <!-- Mostra l'immagine se è un file immagine -->
-                <img src="data:{{ $media->mime_type }};base64,{{ $media->base64_data }}" 
-                     alt="{{ $media->name }}" 
-                     class="attachment-image">
-                @elseif(str_starts_with($media->mime_type, 'image/'))
-                <p style="color: #999; font-style: italic;">Immagine non disponibile</p>
+            <!-- COLONNA DESTRA: IMMAGINE ESPLOSO (40%) -->
+            <div class="right-column">
+                @if($document->media && $document->media->count() > 0)
+                @php
+                $esplosoImage = $document->media->first(function($media) {
+                return str_starts_with($media->mime_type, 'image/');
+                });
+                @endphp
+                @if($esplosoImage && isset($esplosoImage->base64_data))
+                <img src="data:{{ $esplosoImage->mime_type }};base64,{{ $esplosoImage->base64_data }}"
+                    alt="Immagine esploso" class="esploso-image" />
                 @else
-                <!-- Per file non immagine, mostra un'icona o indicazione -->
-                <p style="color: #666; font-style: italic;">
-                    📎 File allegato: {{ $media->extension }} 
-                    @if(str_starts_with($media->mime_type, 'application/pdf'))
-                        (PDF)
-                    @elseif(str_starts_with($media->mime_type, 'application/'))
-                        (Documento)
-                    @else
-                        ({{ $media->mime_type }})
-                    @endif
-                </p>
+                <p class="esploso-placeholder">Immagine esploso non disponibile</p>
+                @endif
+                @else
+                <p class="esploso-placeholder">Nessuna immagine esploso caricata</p>
                 @endif
             </div>
-            @endforeach
         </div>
-    </div>
-    @endif
 
-    <!-- Footer -->
-    <div class="footer">
-        <p>Documento generato automaticamente il {{ now()->format('d/m/Y H:i') }}</p>
-        <p>Ordine Vendita {{ $document->numero }} - Pagina 1 di 1</p>
+        <!-- FIRME -->
+            <div class="signatures-section">
+            <div class="signature-column">
+                <div class="signature-title">FIRMA UFF.ACQUISTI</div>
+                <div class="signature-line"></div>
+            </div>
+            <div class="signature-column">
+                <div class="signature-title">FIRMA RESP.PRODUZIONE</div>
+                <div class="signature-line"></div>
+            </div>
+        </div>
     </div>
 </body>
 

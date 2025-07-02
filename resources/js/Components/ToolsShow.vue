@@ -173,6 +173,7 @@
 				title="Invia e-mail"
 				@click=""
 			/>
+			<!-- Pulsante PDF -->
 			<v-btn 
 				v-if="pdfUrl !== null"
 				variant="flat"
